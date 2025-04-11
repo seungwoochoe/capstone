@@ -7,17 +7,42 @@
 
 import Foundation
 
-struct AuthWebRepository: AuthRepository {
+struct AuthResponse: Codable, Equatable {
+    let token: String
+    let userID: String
+}
+
+protocol AuthenticationWebRepository: WebRepository {
+    func authenticate(with appleToken: String) async throws -> AuthResponse
+}
+
+struct RealAuthenticationWebRepository: AuthenticationWebRepository {
     let session: URLSession
-    
-    func signInWithApple() async throws -> Bool {
-        // Implement Sign in with Apple integration.
-        // For now, simulate a successful authentication.
-        try await Task.sleep(nanoseconds: 500_000_000)
-        return true
+    let baseURL: String = "https://your-server.com/api/auth"
+
+    func authenticate(with appleToken: String) async throws -> AuthResponse {
+        return try await call(endpoint: API.authenticate(appleToken: appleToken))
     }
-    
-    func signOut() async throws {
-        // Simulate sign out.
+}
+
+extension RealAuthenticationWebRepository {
+    enum API {
+        case authenticate(appleToken: String)
+    }
+}
+
+extension RealAuthenticationWebRepository.API: APICall {
+    var path: String {
+        switch self {
+        case let .authenticate(appleToken):
+            return "/signin?token=\(appleToken)"
+        }
+    }
+    var method: String { "POST" }
+    var headers: [String: String]? {
+        ["Content-Type": "application/json"]
+    }
+    func body() throws -> Data? {
+        return nil  // Or serialize a JSON payload if needed.
     }
 }

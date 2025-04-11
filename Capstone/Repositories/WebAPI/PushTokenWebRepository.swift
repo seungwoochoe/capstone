@@ -12,17 +12,21 @@ protocol PushTokenWebRepository: WebRepository {
 }
 
 struct RealPushTokenWebRepository: PushTokenWebRepository {
-    
     let session: URLSession
-    let baseURL: String
-    
-    init(session: URLSession) {
-        self.session = session
-        self.baseURL = "https://your-server.com/api/push-token"
-    }
-    
+    let baseURL: String = "https://your-server.com/api/push-token"
+
     func register(devicePushToken: Data) async throws {
-        // upload the push token to your server
-        // you can as well call a third party library here instead
+        let tokenPayload = ["token": devicePushToken.base64EncodedString()]
+        let bodyData = try JSONSerialization.data(withJSONObject: tokenPayload, options: [])
+        var request = URLRequest(url: URL(string: baseURL)!)
+        request.httpMethod = "POST"
+        request.allHTTPHeaderFields = ["Content-Type": "application/json"]
+        request.httpBody = bodyData
+        
+        let (_, response) = try await session.data(for: request)
+        guard let httpResponse = response as? HTTPURLResponse,
+              (200..<300).contains(httpResponse.statusCode) else {
+            throw APIError.unexpectedResponse
+        }
     }
 }
