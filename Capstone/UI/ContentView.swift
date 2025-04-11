@@ -14,7 +14,6 @@ import SwiftData
 struct ContentView: View {
     @Query(sort: \ScannedRoom.processedDate, order: .reverse) var scannedRooms: [ScannedRoom]
 
-    @State private var showSearch: Bool = false
     @State private var searchText: String = ""
     @State private var showScanner: Bool = false
     @State private var showAbout: Bool = false
@@ -45,13 +44,6 @@ struct ContentView: View {
                 .toolbar {
                     ToolbarItem(placement: .navigationBarTrailing) {
                         HStack(spacing: 16) {
-                            // Toggle the search overlay
-                            Button {
-                                withAnimation { showSearch.toggle() }
-                            } label: {
-                                Image(systemName: "magnifyingglass")
-                            }
-                            
                             // Menu button with additional options
                             Menu {
                                 Button("Log Out") {
@@ -66,26 +58,6 @@ struct ContentView: View {
                             }
                         }
                     }
-                }
-                // Search overlay view
-                if showSearch {
-                    VStack {
-                        HStack {
-                            TextField("Search Rooms", text: $searchText)
-                                .textFieldStyle(.roundedBorder)
-                            Button("Cancel") {
-                                withAnimation {
-                                    showSearch = false
-                                    searchText = ""
-                                }
-                            }
-                        }
-                        .padding()
-                        Spacer()
-                    }
-                    // Using ultra-thin material to mimic a blur effect
-                    .background(.ultraThinMaterial)
-                    .transition(.move(edge: .top))
                 }
                 
                 // Bottom area with gradient blur and floating "+" button
@@ -108,6 +80,7 @@ struct ContentView: View {
                         )
                 }
             }
+            .searchable(text: $searchText)
             // Present the scanning flow, about view, and 3D viewer as modal sheets:
             .sheet(isPresented: $showScanner) {
                 RoomScannerView()
@@ -167,7 +140,6 @@ struct BottomGradientBlur: View {
             endPoint: .bottom
         )
         .ignoresSafeArea()
-        .blur(radius: 10)
     }
 }
 
