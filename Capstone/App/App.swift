@@ -26,7 +26,7 @@ extension AppEnvironment {
             if isRunningTests {
                 Text("Running unit tests")
             } else {
-                TabBarView()
+                ContentView()
                     .modifier(RootViewAppearance())
                     .modelContainer(modelContainer)
                     .attachEnvironmentOverrides(onChange: onChangeHandler)
