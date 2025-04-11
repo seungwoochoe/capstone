@@ -32,7 +32,6 @@ struct ContentView: View {
     var body: some View {
         NavigationStack {
             ZStack(alignment: .bottom) {
-                // Use a List; you might also use a LazyVGrid if you prefer grid layout
                 List(filteredRooms, id: \.roomID) { room in
                     Button {
                         selectedRoom = room
@@ -63,25 +62,22 @@ struct ContentView: View {
                 // Bottom area with gradient blur and floating "+" button
                 VStack(spacing: 0) {
                     BottomGradientBlur()
-                        .frame(height: 100)
-                        // Place the "+" button on top of the blurred background
+                        .frame(height: 90)
                         .overlay(
-                            Button(action: {
-                                // Start the scanning flow
+                            Button {
                                 showScanner = true
-                            }) {
+                            } label: {
                                 Image(systemName: "plus")
                                     .font(.largeTitle)
-                                    .foregroundColor(.white)
-                                    .frame(width: 60, height: 60)
-                                    .background(Circle().fill(Color.blue))
+                                    .foregroundColor(.accentColor)
+                                    .frame(width: 64, height: 64)
+                                    .background(Circle().fill(.white))
+                                    .shadow(color: .secondary.opacity(0.3), radius: 15)
                             }
-                            .padding(.bottom, 20)
                         )
                 }
             }
             .searchable(text: $searchText)
-            // Present the scanning flow, about view, and 3D viewer as modal sheets:
             .sheet(isPresented: $showScanner) {
                 RoomScannerView()
             }
@@ -108,7 +104,7 @@ struct RoomRowView: View {
     
     var body: some View {
         HStack {
-            // Placeholder thumbnail (replace with an actual image if available)
+            // Placeholder thumbnail
             Rectangle()
                 .fill(Color.gray.opacity(0.3))
                 .frame(width: 50, height: 50)
@@ -116,17 +112,11 @@ struct RoomRowView: View {
             VStack(alignment: .leading) {
                 Text(room.roomName)
                     .font(.headline)
-                Text(statusText(for: room))
+                Text("Completed")
                     .font(.subheadline)
                     .foregroundColor(.secondary)
             }
         }
-    }
-    
-    // Determine upload/processing status.
-    private func statusText(for room: ScannedRoom) -> String {
-        // Replace with logic that tracks processing: “Uploading…”, “Processing…”, “Completed”
-        return "Completed"
     }
 }
 
