@@ -299,35 +299,8 @@ struct ARViewContainer: UIViewRepresentable {
     }
 }
 
-// MARK: - About View
-
-struct AboutView: View {
-    @Environment(\.dismiss) private var dismiss
-
-    var body: some View {
-        NavigationStack {
-            VStack(spacing: 20) {
-                Text("Capstone App")
-                    .font(.title)
-                Text("Version 1.0.0")
-                Text("Acknowledgments: Thanks to the team and open-source libraries.")
-                Spacer()
-            }
-            .padding()
-            .navigationTitle("About")
-            .toolbar {
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    Button("Done") { dismiss() }
-                }
-            }
-        }
-    }
-}
-
 // MARK: - Preview
 
-struct ContentView_Previews: PreviewProvider {
-    static var previews: some View {
-        ContentView()
-    }
+#Preview(traits: .sampleData) {
+    ContentView()
 }
