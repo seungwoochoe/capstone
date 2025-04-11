@@ -9,37 +9,60 @@ import SwiftData
 import Foundation
 
 protocol ScanUploadTaskDBRepository {
-    func store(uploadTask: ScanUploadTask) async throws
-    func fetchPendingUploadTasks() async throws -> [ScanUploadTask]
-    func update(uploadTask: ScanUploadTask) async throws
-    func delete(uploadTask: ScanUploadTask) async throws
+    func store(uploadTaskDTO: ScanUploadTaskDTO) async throws
+    func fetchPendingUploadTasks() async throws -> [ScanUploadTaskDTO]
+    func update(uploadTaskDTO: ScanUploadTaskDTO, for taskID: UUID) async throws
+    func delete(taskID: UUID) async throws
 }
 
 @ModelActor
 final actor RealScanUploadTaskDBRepository: ScanUploadTaskDBRepository {
-    func store(uploadTask: ScanUploadTask) async throws {
+
+    func store(uploadTaskDTO: ScanUploadTaskDTO) async throws {
+        let task = ScanUploadTask(dto: uploadTaskDTO)
         try modelContext.transaction {
-            modelContext.insert(uploadTask)
+            modelContext.insert(task)
         }
     }
     
-    func fetchPendingUploadTasks() async throws -> [ScanUploadTask] {
-        let fetchDescriptor = FetchDescriptor<ScanUploadTask>(predicate: #Predicate<ScanUploadTask> {
-            $0.uploadStatus == .pending || $0.uploadStatus == .failed
-        })
-        return try modelContainer.mainContext.fetch(fetchDescriptor)
+    func fetchPendingUploadTasks() async throws -> [ScanUploadTaskDTO] {
+        let predicate = #Predicate<ScanUploadTask> {
+            $0.uploadStatus == UploadStatus.pending ||
+            $0.uploadStatus == UploadStatus.failed
+        }
+        let fetchDescriptor = FetchDescriptor<ScanUploadTask>(predicate: predicate)
+        
+        let tasks = try modelContext.fetch(fetchDescriptor)
+        return tasks.map { $0.toDTO() }
     }
     
-    func update(uploadTask: ScanUploadTask) async throws {
+    func update(uploadTaskDTO: ScanUploadTaskDTO, for taskID: UUID) async throws {
+        let predicate = #Predicate<ScanUploadTask> { $0.taskID == taskID }
+        let fetchDescriptor = FetchDescriptor<ScanUploadTask>(predicate: predicate)
+        guard let task = try modelContext.fetch(fetchDescriptor).first else {
+            // Optionally, throw an error if the task is not found.
+            return
+        }
+        
         try modelContext.transaction {
-            // With SwiftData, changes to the model are tracked automatically.
-            // Use a transaction if you need to force a commit.
+            task.roomName = uploadTaskDTO.roomName
+            task.imageURLs = uploadTaskDTO.imageURLs
+            task.createdAt = uploadTaskDTO.createdAt
+            task.retryCount = uploadTaskDTO.retryCount
+            task.uploadStatus = uploadTaskDTO.uploadStatus
         }
     }
     
-    func delete(uploadTask: ScanUploadTask) async throws {
+    func delete(taskID: UUID) async throws {
+        let predicate = #Predicate<ScanUploadTask> { $0.taskID == taskID }
+        let fetchDescriptor = FetchDescriptor<ScanUploadTask>(predicate: predicate)
+        guard let task = try modelContext.fetch(fetchDescriptor).first else {
+            // Optionally, throw an error if the task is not found.
+            return
+        }
+        
         try modelContext.transaction {
-            modelContext.delete(uploadTask)
+            modelContext.delete(task)
         }
     }
 }
