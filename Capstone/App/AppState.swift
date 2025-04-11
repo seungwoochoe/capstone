@@ -8,24 +8,29 @@
 import SwiftUI
 import Combine
 
-// MARK: - AppState
-
 struct AppState: Equatable {
-    var routing = Routing()
+    var routing = ViewRouting()
     var system = System()
     var permissions = Permissions()
 }
 
-extension AppState {
-    struct Routing: Equatable {
-        var scannedRooms = ScannedRoomsRouting()
-        var roomDetailID: String? = nil // to indicate the selected room’s identifier
+// MARK: - Routing
 
-        struct ScannedRoomsRouting: Equatable {
-            var searchQuery: String = ""
-        }
+extension AppState {
+    
+    enum Tab: String, Equatable {
+        case scanRoom
+        case scannedRooms
+        case settings
+    }
+    
+    struct ViewRouting: Equatable {
+        var activeTab: AppState.Tab = .scanRoom
+        var selectedRoomID: String? = nil
     }
 }
+
+// MARK: - System State
 
 extension AppState {
     struct System: Equatable {
@@ -34,19 +39,21 @@ extension AppState {
     }
 }
 
+// MARK: - Permissions
+
 extension AppState {
     struct Permissions: Equatable {
-        var push: PermissionStatus = .unknown
-        var camera: PermissionStatus = .unknown
+        var camera: Permission.Status = .unknown
+        var push: Permission.Status = .unknown
+    }
+    
+    static func permissionKeyPath(for permission: Permission) -> WritableKeyPath<AppState, Permission.Status> {
+        let pathToPermissions = \AppState.permissions
+        switch permission {
+        case .camera:
+            return pathToPermissions.appending(path: \.camera)
+        case .pushNotifications:
+            return pathToPermissions.appending(path: \.push)
+        }
     }
 }
-
-/// A simple enum to represent permission statuses.
-enum PermissionStatus: Equatable {
-    case unknown
-    case notRequested
-    case granted
-    case denied
-}
-
-// You can add Codable conformance or additional helpers if needed.

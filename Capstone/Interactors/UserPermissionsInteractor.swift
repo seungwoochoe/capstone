@@ -14,7 +14,12 @@ import SwiftUI
 enum Permission {
     case pushNotifications
     case camera
-    // Add other permissions as needed.
+    
+    enum Status: Equatable {
+        case unknown
+        case granted
+        case denied
+    }
 }
 
 // MARK: - UserPermissionsInteractor Protocol
