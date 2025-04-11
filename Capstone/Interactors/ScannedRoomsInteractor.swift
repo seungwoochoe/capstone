@@ -7,14 +7,32 @@
 
 import Foundation
 
-struct ScannedRoomsInteractor {
-    let persistenceRepository: RoomScanPersistenceRepository
+protocol ScannedRoomsInteractor {
+    func getScannedRooms() async throws -> [ScannedRoom]
+    func delete(room: ScannedRoom) async throws
+}
+
+struct RealScannedRoomsInteractor: ScannedRoomsInteractor {
+    let webRepository: ScannedRoomWebRepository
+    let persistenceRepository: ScannedRoomDBRepository
     
     func getScannedRooms() async throws -> [ScannedRoom] {
-        return try await persistenceRepository.fetchScannedRooms()
+        let scannedRoomDTOs = try await persistenceRepository.fetchAllScannedRooms()
+        return scannedRoomDTOs.map { ScannedRoom(dto: $0) }
     }
     
     func delete(room: ScannedRoom) async throws {
-        // Implement local deletion using SwiftData.
+        try await persistenceRepository.delete(roomID: room.roomID)
     }
+}
+
+struct StubScannedRoomsInteractor: ScannedRoomsInteractor {
+    
+    func getScannedRooms() async throws -> [ScannedRoom] {
+        return []
+    }
+    
+    func delete(room: ScannedRoom) async throws {
+        
+    }    
 }

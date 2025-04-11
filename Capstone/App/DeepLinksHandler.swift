@@ -37,8 +37,8 @@ struct RealDeepLinksHandler: DeepLinksHandler {
     
     private let container: DIContainer
     
-    init(container: DIContainer) {
-        self.container = container
+    init(diContainer: DIContainer) {
+        self.container = diContainer
     }
     
     func open(deepLink: DeepLink) {

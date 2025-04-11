@@ -13,14 +13,11 @@ struct RoomDetailView: View {
     
     var body: some View {
         VStack {
-            if let usdzURL = room.usdzURL {
-                // In a real app, you would embed an ARView or a QuickLook preview here.
-                Text("3D Model View")
-                Color.gray.frame(height: 300)
-                    .overlay(Text("USDZ Model Placeholder"))
-            } else {
-                Text("Processing 3D model...")
-            }
+            // In a real app, you would embed an ARView or a QuickLook preview here.
+            Text("3D Model View")
+            Color.gray.frame(height: 300)
+                .overlay(Text("USDZ Model Placeholder"))
+            
             Spacer()
             
             Button(action: {

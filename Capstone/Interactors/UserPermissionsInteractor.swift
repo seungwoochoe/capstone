@@ -101,16 +101,16 @@ final class RealUserPermissionsInteractor: UserPermissionsInteractor {
 
 extension UNAuthorizationStatus {
     /// Maps UNAuthorizationStatus to our simpler PermissionStatus enum.
-    func mapToPermissionStatus() -> PermissionStatus {
+    func mapToPermissionStatus() -> Permission.Status {
         switch self {
         case .authorized:
             return .granted
         case .denied:
             return .denied
         case .notDetermined:
-            return .notRequested
+            return .unknown
         case .provisional, .ephemeral:
-            return .notRequested
+            return .unknown
         @unknown default:
             return .unknown
         }

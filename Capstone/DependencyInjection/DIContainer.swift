@@ -25,15 +25,17 @@ struct DIContainer {
 extension DIContainer {
     // MARK: - Web Repositories
     struct WebRepositories {
-        let roomScan: RoomScanWebRepository
-        let auth: AuthWebRepository
+        let scannedRoomWebRepository: ScannedRoomWebRepository
+        let authenticationWebRepository: AuthenticationWebRepository
+        let pushTokenWebRepository: PushTokenWebRepository
     }
-    
+
     // MARK: - Database Repositories
     struct DBRepositories {
-        let roomScan: RoomScanPersistenceRepository
+        let scanUploadTaskDBRepository: ScanUploadTaskDBRepository
+        let scannedRoomDBRepository: ScannedRoomDBRepository
     }
-    
+
     // MARK: - Interactors
     struct Interactors {
         let scanRoom: ScanRoomInteractor

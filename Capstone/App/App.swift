@@ -42,7 +42,7 @@ extension AppEnvironment {
     private var onChangeHandler: (EnvironmentValues.Diff) -> Void {
         return { diff in
             if !diff.isDisjoint(with: [.locale, .sizeCategory]) {
-                self.diContainer.appState[\.routing] = AppState.Routing()
+                self.diContainer.appState[\.routing] = AppState.ViewRouting()
             }
         }
     }
