@@ -6,6 +6,10 @@
 	objectVersion = 77;
 	objects = {
 
+/* Begin PBXBuildFile section */
+		233460422DA89ADC0002DFED /* EnvironmentOverrides in Frameworks */ = {isa = PBXBuildFile; productRef = 233460412DA89ADC0002DFED /* EnvironmentOverrides */; };
+/* End PBXBuildFile section */
+
 /* Begin PBXFileReference section */
 		23CF126D2D99531900B88F84 /* Capstone.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Capstone.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
@@ -36,6 +40,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				233460422DA89ADC0002DFED /* EnvironmentOverrides in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -78,6 +83,7 @@
 			);
 			name = Capstone;
 			packageProductDependencies = (
+				233460412DA89ADC0002DFED /* EnvironmentOverrides */,
 			);
 			productName = Capstone;
 			productReference = 23CF126D2D99531900B88F84 /* Capstone.app */;
@@ -107,6 +113,9 @@
 			);
 			mainGroup = 23CF12642D99531900B88F84;
 			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				233460402DA89ADC0002DFED /* XCRemoteSwiftPackageReference "EnvironmentOverrides" */,
+			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 23CF126E2D99531900B88F84 /* Products */;
 			projectDirPath = "";
@@ -355,6 +364,25 @@
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		233460402DA89ADC0002DFED /* XCRemoteSwiftPackageReference "EnvironmentOverrides" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/nalexn/EnvironmentOverrides";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 0.0.4;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		233460412DA89ADC0002DFED /* EnvironmentOverrides */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 233460402DA89ADC0002DFED /* XCRemoteSwiftPackageReference "EnvironmentOverrides" */;
+			productName = EnvironmentOverrides;
+		};
+/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = 23CF12652D99531900B88F84 /* Project object */;
 }

@@ -1,0 +1,15 @@
+{
+  "originHash" : "f8809651dcd2821842e61af74e6bba264d376f9e2031ece930181c15bc16d449",
+  "pins" : [
+    {
+      "identity" : "environmentoverrides",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/nalexn/EnvironmentOverrides",
+      "state" : {
+        "revision" : "d0b763a678d254e51c74c48e83119bd063250ba3",
+        "version" : "0.0.4"
+      }
+    }
+  ],
+  "version" : 3
+}
