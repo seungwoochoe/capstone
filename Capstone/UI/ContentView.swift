@@ -39,7 +39,7 @@ struct ContentView: View {
                         RoomRowView(room: room)
                     }
                 }
-                .navigationTitle("Scanned Rooms")
+                .navigationTitle("3D Room Scanner")
                 .toolbar {
                     ToolbarItem(placement: .navigationBarTrailing) {
                         HStack(spacing: 16) {
@@ -59,7 +59,6 @@ struct ContentView: View {
                     }
                 }
                 
-                // Bottom area with gradient blur and floating "+" button
                 VStack(spacing: 0) {
                     BottomGradientBlur()
                         .frame(height: 90)
@@ -78,6 +77,20 @@ struct ContentView: View {
                 }
             }
             .searchable(text: $searchText)
+            .overlay {
+                if filteredRooms.isEmpty {
+                    if searchText.isEmpty {
+                        ContentUnavailableView {
+                            Text("Start Scanning")
+                                .fontWeight(.semibold)
+                        } description: {
+                            Text("Tap the plus button to get started.")
+                        }
+                    } else {
+                        ContentUnavailableView.search(text: searchText)
+                    }
+                }
+            }
             .sheet(isPresented: $showScanner) {
                 RoomScannerView()
             }
