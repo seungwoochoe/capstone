@@ -14,18 +14,18 @@ struct ScannedRoomsView: View {
     
     var body: some View {
         NavigationView {
-            List(filteredRooms(), id: \.objectID) { room in
-                NavigationLink(destination: RoomDetailView(room: room)) {
-                    VStack(alignment: .leading) {
-                        Text(room.roomName)
-                            .font(.headline)
-                        Text(room.status.rawValue.capitalized)
-                            .font(.subheadline)
-                    }
-                }
-            }
-            .navigationTitle("Scanned Rooms")
-            .searchable(text: $searchText)
+//            List(filteredRooms(), id: \.objectID) { room in
+//                NavigationLink(destination: RoomDetailView(room: room)) {
+//                    VStack(alignment: .leading) {
+//                        Text(room.roomName)
+//                            .font(.headline)
+//                        Text(room.status.rawValue.capitalized)
+//                            .font(.subheadline)
+//                    }
+//                }
+//            }
+//            .navigationTitle("Scanned Rooms")
+//            .searchable(text: $searchText)
         }
         .onAppear {
             // Load rooms from the persistence repository.

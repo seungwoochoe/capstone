@@ -26,14 +26,15 @@ final actor RealScanUploadTaskDBRepository: ScanUploadTaskDBRepository {
     }
     
     func fetchPendingUploadTasks() async throws -> [ScanUploadTaskDTO] {
-        let predicate = #Predicate<ScanUploadTask> {
-            $0.uploadStatus == UploadStatus.pending ||
-            $0.uploadStatus == UploadStatus.failed
-        }
-        let fetchDescriptor = FetchDescriptor<ScanUploadTask>(predicate: predicate)
-        
-        let tasks = try modelContext.fetch(fetchDescriptor)
-        return tasks.map { $0.toDTO() }
+//        let predicate = #Predicate<ScanUploadTask> {
+//            $0.uploadStatus == UploadStatus.pending ||
+//            $0.uploadStatus == UploadStatus.failed
+//        }
+//        let fetchDescriptor = FetchDescriptor<ScanUploadTask>(predicate: predicate)
+//        
+//        let tasks = try modelContext.fetch(fetchDescriptor)
+//        return tasks.map { $0.toDTO() }
+        return []
     }
     
     func update(uploadTaskDTO: ScanUploadTaskDTO, for taskID: UUID) async throws {
