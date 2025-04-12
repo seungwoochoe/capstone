@@ -11,6 +11,8 @@ import SwiftData
 // MARK: - Main Content View
 
 struct ContentView: View {
+    
+    @Environment(\.colorScheme) private var colorScheme
     @Query(sort: \ScannedRoom.processedDate, order: .reverse) var scannedRooms: [ScannedRoom]
 
     @State private var searchText: String = ""
@@ -42,15 +44,13 @@ struct ContentView: View {
                 .toolbar {
                     ToolbarItem(placement: .navigationBarTrailing) {
                         HStack(spacing: 16) {
-                            // Menu button with additional options
                             Menu {
-                                Button("Log Out") {
-                                    logOutUser()
-                                }
                                 Button("About") {
                                     showAbout = true
                                 }
-                                // You could add a "Settings" option here if needed.
+                                Button("Log Out") {
+                                    logOutUser()
+                                }
                             } label: {
                                 Image(systemName: "ellipsis.circle")
                             }
@@ -67,10 +67,10 @@ struct ContentView: View {
                             } label: {
                                 Image(systemName: "plus")
                                     .font(.largeTitle)
-                                    .foregroundColor(.accentColor)
+                                    .foregroundColor(colorScheme == .light ? .accentColor : .white)
                                     .frame(width: 64, height: 64)
-                                    .background(Circle().fill(.white))
-                                    .shadow(color: .secondary.opacity(0.3), radius: 15)
+                                    .background(Circle().fill(colorScheme == .light ? Color(.systemBackground) : .accentColor))
+                                    .shadow(color: colorScheme == .light ? .secondary.opacity(0.3) : .black.opacity(0.3), radius: 15)
                             }
                         )
                 }
@@ -124,6 +124,7 @@ struct RoomRowView: View {
             VStack(alignment: .leading) {
                 Text(room.roomName)
                     .font(.headline)
+                    .foregroundColor(.primary)
                 Text("Completed")
                     .font(.subheadline)
                     .foregroundColor(.secondary)
