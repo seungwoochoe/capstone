@@ -141,6 +141,7 @@ struct BottomGradientBlur: View {
             endPoint: .bottom
         )
         .ignoresSafeArea()
+        .allowsHitTesting(false)
     }
 }
 

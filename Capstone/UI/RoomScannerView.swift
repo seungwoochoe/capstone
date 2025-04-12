@@ -47,3 +47,7 @@ struct RoomScannerView: View {
         }
     }
 }
+
+#Preview {
+    RoomScannerView()
+}
