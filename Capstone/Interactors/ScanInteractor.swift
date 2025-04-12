@@ -26,9 +26,12 @@ struct RealScanInteractor: ScanInteractor {
     let fileManager: FileManager
     
     func storeUploadTask(scanName: String, images: [UIImage]) async throws -> UploadTaskDTO {
-        let imageURLs = try saveImagesToDisk(images: images)
+        let taskId = UUID()
+        let folderURL = try createFolder(for: taskId)
+        let imageURLs = try saveImagesToDisk(images: images, in: folderURL)
+        
         let uploadTaskDTO = UploadTaskDTO(
-            id: UUID(),
+            id: taskId,
             name: scanName,
             imageURLs: imageURLs,
             createdAt: Date(),
@@ -38,26 +41,6 @@ struct RealScanInteractor: ScanInteractor {
         
         try await uploadTaskPersistenceRepository.store(uploadTaskDTO: uploadTaskDTO)
         return uploadTaskDTO
-    }
-    
-    private func saveImagesToDisk(images: [UIImage]) throws -> [URL] {
-        guard let documentsURL = fileManager.urls(for: .documentDirectory, in: .userDomainMask).first else {
-            throw NSError(
-                domain: "FileManager",
-                code: 1,
-                userInfo: [NSLocalizedDescriptionKey: "Could not locate documents directory"]
-            )
-        }
-        
-        var urls: [URL] = []
-        for image in images {
-            guard let imageData = image.jpegData(compressionQuality: 0.8) else { continue }
-            let uuid = UUID().uuidString
-            let fileURL = documentsURL.appendingPathComponent("upload_\(uuid).jpg")
-            try imageData.write(to: fileURL)
-            urls.append(fileURL)
-        }
-        return urls
     }
     
     func upload(uploadTaskDTO: UploadTaskDTO) async throws {
@@ -114,10 +97,53 @@ struct RealScanInteractor: ScanInteractor {
     
     func delete(uploadTask: DBModel.UploadTask) async throws {
         try await uploadTaskPersistenceRepository.delete(uploadTaskID: uploadTask.id)
+        try deleteImagesFromDisk(for: uploadTask)
     }
     
     func delete(scan: DBModel.Scan) async throws {
         try await scanPersistenceRepository.delete(scanID: scan.id)
+    }
+}
+
+extension RealScanInteractor {
+    private func createFolder(for id: UUID) throws -> URL {
+        guard let documentsURL = fileManager.urls(for: .documentDirectory, in: .userDomainMask).first else {
+            throw NSError(
+                domain: "FileManager",
+                code: 1,
+                userInfo: [NSLocalizedDescriptionKey: "Could not locate documents directory"]
+            )
+        }
+        
+        let folderURL = documentsURL.appendingPathComponent(id.uuidString)
+        try fileManager.createDirectory(at: folderURL, withIntermediateDirectories: true, attributes: nil)
+        return folderURL
+    }
+    
+    private func saveImagesToDisk(images: [UIImage], in folderURL: URL) throws -> [URL] {
+        var urls: [URL] = []
+        for image in images {
+            guard let imageData = image.jpegData(compressionQuality: 0.8) else { continue }
+            let uniqueName = UUID().uuidString
+            let fileURL = folderURL.appendingPathComponent("upload_\(uniqueName).jpg")
+            try imageData.write(to: fileURL)
+            urls.append(fileURL)
+        }
+        return urls
+    }
+    
+    private func deleteImagesFromDisk(for uploadTask: DBModel.UploadTask) throws {
+        guard let documentsURL = fileManager.urls(for: .documentDirectory, in: .userDomainMask).first else {
+            throw NSError(
+                domain: "FileManager",
+                code: 1,
+                userInfo: [NSLocalizedDescriptionKey: "Could not locate documents directory"]
+            )
+        }
+        let folderURL = documentsURL.appendingPathComponent(uploadTask.id.uuidString)
+        if fileManager.fileExists(atPath: folderURL.path) {
+            try fileManager.removeItem(at: folderURL)
+        }
     }
 }
 
