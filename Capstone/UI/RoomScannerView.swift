@@ -46,11 +46,23 @@ struct RoomScannerView: View {
     }
     
     private func processCameraAngle(_ currentYaw: Float) {
-        let currentAngle = normalizedDegrees(from: currentYaw)
-        let segment = Int(currentAngle / angleThresholdDegrees)
+        // Convert yaw (in radians) to normalized degrees [0, 360)
+        let normalizedAngle = normalizedDegrees(from: currentYaw)
+        
+        // Compute the scanning angle relative to the donut.
+        // The donut’s furthest point (backside) is at 270°.
+        // By computing (270 - normalizedAngle + 360) mod 360,
+        // we ensure that when normalizedAngle == 270°, scanningAngle becomes 0°.
+        // Also, as you rotate clockwise (reducing normalizedAngle),
+        // the scanningAngle increases, marking segments in clockwise order.
+        let scanningAngle = fmod(270 - normalizedAngle + 360, 360)
+        
+        // Determine which segment should be captured.
+        let segment = Int(scanningAngle / angleThresholdDegrees)
+        
         if !capturedSegments.contains(segment) {
             capturedSegments.insert(segment)
-            captureImage(currentAngle: currentAngle)
+            captureImage(currentAngle: scanningAngle)
         }
     }
     
