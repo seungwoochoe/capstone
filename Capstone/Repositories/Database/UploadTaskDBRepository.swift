@@ -12,7 +12,7 @@ protocol UploadTaskDBRepository {
     func store(uploadTaskDTO: UploadTaskDTO) async throws
     func fetchPendingUploadTasks() async throws -> [UploadTaskDTO]
     func update(uploadTaskDTO: UploadTaskDTO, for taskID: UUID) async throws
-    func delete(taskID: UUID) async throws
+    func delete(uploadTaskID: UUID) async throws
 }
 
 @ModelActor
@@ -57,8 +57,8 @@ final actor RealUploadTaskDBRepository: UploadTaskDBRepository {
         }
     }
     
-    func delete(taskID: UUID) async throws {
-        let predicate = #Predicate<DBModel.UploadTask> { $0.id == taskID }
+    func delete(uploadTaskID: UUID) async throws {
+        let predicate = #Predicate<DBModel.UploadTask> { $0.id == uploadTaskID }
         let fetchDescriptor = FetchDescriptor<DBModel.UploadTask>(predicate: predicate)
         guard let task = try modelContext.fetch(fetchDescriptor).first else {
             // Optionally, throw an error if the task is not found.

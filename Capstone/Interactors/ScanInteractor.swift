@@ -12,7 +12,7 @@ import SwiftUI
 protocol ScanInteractor {
     func storeUploadTask(scanName: String, images: [UIImage]) async throws -> UploadTaskDTO
     func upload(uploadTaskDTO: UploadTaskDTO) async throws
-    func getStoredScans() async throws -> [DBModel.Scan]
+    func delete(uploadTask: DBModel.UploadTask) async throws
     func delete(scan: DBModel.Scan) async throws
 }
 
@@ -112,9 +112,8 @@ struct RealScanInteractor: ScanInteractor {
         }
     }
     
-    func getStoredScans() async throws -> [DBModel.Scan] {
-        let scanDTOs = try await scanPersistenceRepository.fetchAllScans()
-        return scanDTOs.map { DBModel.Scan(dto: $0) }
+    func delete(uploadTask: DBModel.UploadTask) async throws {
+        try await uploadTaskPersistenceRepository.delete(uploadTaskID: uploadTask.id)
     }
     
     func delete(scan: DBModel.Scan) async throws {
@@ -133,8 +132,8 @@ struct StubScanInteractor: ScanInteractor {
         
     }
     
-    func getStoredScans() async throws -> [DBModel.Scan] {
-        return []
+    func delete(uploadTask: DBModel.UploadTask) async throws {
+        
     }
     
     func delete(scan: DBModel.Scan) async throws {

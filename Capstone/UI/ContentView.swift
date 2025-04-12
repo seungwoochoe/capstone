@@ -12,6 +12,7 @@ import SwiftData
 
 struct ContentView: View {
     
+    @Environment(\.injected) private var injected
     @Environment(\.colorScheme) private var colorScheme
     @Query(sort: \DBModel.Scan.processedDate, order: .reverse) var scans: [DBModel.Scan]
     @Query(sort: \DBModel.UploadTask.createdAt, order: .reverse) var uploadTasks: [DBModel.UploadTask]
@@ -39,6 +40,7 @@ struct ContentView: View {
                     ForEach(uploadTasks, id: \.id) { uploadTask in
                         UploadTaskRowView(uploadTask: uploadTask)
                     }
+                    .onDelete(perform: deleteUploadTasks)
                     
                     ForEach(filteredScans, id: \.id) { scan in
                         Button {
@@ -47,6 +49,7 @@ struct ContentView: View {
                             ScanRowView(scan: scan)
                         }
                     }
+                    .onDelete(perform: deleteScan)
                 }
                 .navigationTitle("3D Room Scanner")
                 .toolbar {
@@ -111,6 +114,26 @@ struct ContentView: View {
     }
     
     // MARK: - Helper Functions
+    
+    private func deleteUploadTasks(offsets: IndexSet) {
+        for index in offsets {
+            let uploadTask = uploadTasks[index]
+            
+            Task {
+                try await injected.interactors.scanInteractor.delete(uploadTask: uploadTask)
+            }
+        }
+    }
+    
+    private func deleteScan(offsets: IndexSet) {
+        for index in offsets {
+            let scan = scans[index]
+            
+            Task {
+                try await injected.interactors.scanInteractor.delete(scan: scan)
+            }
+        }
+    }
     
     private func logOutUser() {
         
