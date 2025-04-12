@@ -15,6 +15,7 @@ struct ContentView: View {
     @Environment(\.colorScheme) private var colorScheme
     @Query(sort: \Scan.processedDate, order: .reverse) var scans: [Scan]
 
+    @State private var searchIsPresented: Bool = false
     @State private var searchText: String = ""
     @State private var showScanner: Bool = false
     @State private var showAbout: Bool = false
@@ -60,20 +61,22 @@ struct ContentView: View {
                 
                 BottomGradientBlur()
                     .frame(height: 90)
-                    .overlay(
-                        Button {
-                            showScanner = true
-                        } label: {
-                            Image(systemName: "plus")
-                                .font(.largeTitle)
-                                .foregroundColor(colorScheme == .light ? .accentColor : .white)
-                                .frame(width: 64, height: 64)
-                                .background(Circle().fill(colorScheme == .light ? Color(.systemBackground) : .accentColor))
-                                .shadow(color: colorScheme == .light ? .secondary.opacity(0.3) : .black.opacity(0.3), radius: 15)
+                    .overlay {
+                        if !searchIsPresented {
+                            Button {
+                                showScanner = true
+                            } label: {
+                                Image(systemName: "plus")
+                                    .font(.largeTitle)
+                                    .foregroundColor(colorScheme == .light ? .accentColor : .white)
+                                    .frame(width: 64, height: 64)
+                                    .background(Circle().fill(colorScheme == .light ? Color(.systemBackground) : .accentColor))
+                                    .shadow(color: colorScheme == .light ? .secondary.opacity(0.3) : .black.opacity(0.3), radius: 15)
+                            }
                         }
-                    )
+                    }
             }
-            .searchable(text: $searchText)
+            .searchable(text: $searchText, isPresented: $searchIsPresented)
             .overlay {
                 if filteredScans.isEmpty {
                     if searchText.isEmpty {
