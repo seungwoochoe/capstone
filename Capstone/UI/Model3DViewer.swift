@@ -62,27 +62,3 @@ struct Model3DViewer: View {
         // (Integrate SwiftData deletion here.)
     }
 }
-
-// MARK: - ARView Container
-//
-//struct ARViewContainer: UIViewRepresentable {
-//    let usdzURL: URL
-//
-//    func makeUIView(context: Context) -> ARView {
-//        let arView = ARView(frame: .zero)
-//        // Attempt to load the USDZ model and add it to the scene.
-//        do {
-//            let modelEntity = try ModelEntity.load(contentsOf: usdzURL)
-//            let anchorEntity = AnchorEntity(world: .zero)
-//            anchorEntity.addChild(modelEntity)
-//            arView.scene.addAnchor(anchorEntity)
-//        } catch {
-//            print("Error loading model: \(error)")
-//        }
-//        return arView
-//    }
-//    
-//    func updateUIView(_ uiView: ARView, context: Context) {
-//        // Update the AR view if needed.
-//    }
-//}

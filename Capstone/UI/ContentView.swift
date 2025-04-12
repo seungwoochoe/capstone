@@ -150,6 +150,6 @@ struct BottomGradientBlur: View {
 
 // MARK: - Preview
 
-#Preview(traits: .sampleData) {
+#Preview(traits: .scanSampleData) {
     ContentView()
 }

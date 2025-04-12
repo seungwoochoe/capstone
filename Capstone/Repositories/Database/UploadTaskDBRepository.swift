@@ -27,8 +27,8 @@ final actor RealUploadTaskDBRepository: UploadTaskDBRepository {
     
     func fetchPendingUploadTasks() async throws -> [UploadTaskDTO] {
         // Workaround for the issue where #Predicate doesn’t work with enums
-        let pending = UploadStatus.pending
-        let failed = UploadStatus.failed
+        let pending = UploadTask.Status.pending
+        let failed = UploadTask.Status.failed
         
         let predicate = #Predicate<UploadTask> {
             $0.uploadStatus == pending ||
