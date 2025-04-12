@@ -39,13 +39,13 @@ extension RealPushNotificationsHandler: UNUserNotificationCenterDelegate {
     }
     
     func handleNotification(userInfo: [AnyHashable : Any], completionHandler: @escaping () -> Void) {
-        guard let roomID = userInfo["roomID"] as? String else {
+        guard let scanID = userInfo["scanID"] as? String else {
             completionHandler()
             return
         }
         
         Task { @MainActor in
-            deepLinksHandler.open(deepLink: .showScannedRoom(roomID: roomID))
+            deepLinksHandler.open(deepLink: .showScan(scanID: scanID))
             completionHandler()
         }
     }

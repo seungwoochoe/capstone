@@ -9,23 +9,23 @@ import SwiftData
 import Foundation
 
 protocol ScanUploadTaskDBRepository {
-    func store(uploadTaskDTO: ScanUploadTaskDTO) async throws
-    func fetchPendingUploadTasks() async throws -> [ScanUploadTaskDTO]
-    func update(uploadTaskDTO: ScanUploadTaskDTO, for taskID: UUID) async throws
+    func store(uploadTaskDTO: UploadTaskDTO) async throws
+    func fetchPendingUploadTasks() async throws -> [UploadTaskDTO]
+    func update(uploadTaskDTO: UploadTaskDTO, for taskID: UUID) async throws
     func delete(taskID: UUID) async throws
 }
 
 @ModelActor
 final actor RealScanUploadTaskDBRepository: ScanUploadTaskDBRepository {
 
-    func store(uploadTaskDTO: ScanUploadTaskDTO) async throws {
-        let task = ScanUploadTask(dto: uploadTaskDTO)
+    func store(uploadTaskDTO: UploadTaskDTO) async throws {
+        let task = UploadTask(dto: uploadTaskDTO)
         try modelContext.transaction {
             modelContext.insert(task)
         }
     }
     
-    func fetchPendingUploadTasks() async throws -> [ScanUploadTaskDTO] {
+    func fetchPendingUploadTasks() async throws -> [UploadTaskDTO] {
 //        let predicate = #Predicate<ScanUploadTask> {
 //            $0.uploadStatus == UploadStatus.pending ||
 //            $0.uploadStatus == UploadStatus.failed
@@ -37,16 +37,16 @@ final actor RealScanUploadTaskDBRepository: ScanUploadTaskDBRepository {
         return []
     }
     
-    func update(uploadTaskDTO: ScanUploadTaskDTO, for taskID: UUID) async throws {
-        let predicate = #Predicate<ScanUploadTask> { $0.taskID == taskID }
-        let fetchDescriptor = FetchDescriptor<ScanUploadTask>(predicate: predicate)
+    func update(uploadTaskDTO: UploadTaskDTO, for taskID: UUID) async throws {
+        let predicate = #Predicate<UploadTask> { $0.id == taskID }
+        let fetchDescriptor = FetchDescriptor<UploadTask>(predicate: predicate)
         guard let task = try modelContext.fetch(fetchDescriptor).first else {
             // Optionally, throw an error if the task is not found.
             return
         }
         
         try modelContext.transaction {
-            task.roomName = uploadTaskDTO.roomName
+            task.name = uploadTaskDTO.name
             task.imageURLs = uploadTaskDTO.imageURLs
             task.createdAt = uploadTaskDTO.createdAt
             task.retryCount = uploadTaskDTO.retryCount
@@ -55,8 +55,8 @@ final actor RealScanUploadTaskDBRepository: ScanUploadTaskDBRepository {
     }
     
     func delete(taskID: UUID) async throws {
-        let predicate = #Predicate<ScanUploadTask> { $0.taskID == taskID }
-        let fetchDescriptor = FetchDescriptor<ScanUploadTask>(predicate: predicate)
+        let predicate = #Predicate<UploadTask> { $0.id == taskID }
+        let fetchDescriptor = FetchDescriptor<UploadTask>(predicate: predicate)
         guard let task = try modelContext.fetch(fetchDescriptor).first else {
             // Optionally, throw an error if the task is not found.
             return

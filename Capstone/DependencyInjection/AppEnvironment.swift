@@ -86,19 +86,19 @@ extension AppEnvironment {
     }
     
     private static func configuredWebRepositories(session: URLSession) -> DIContainer.WebRepositories {
-        let scannedRoom = RealScannedRoomWebRepository(session: session)
+        let scan = RealScanWebRepository(session: session)
         let authentication = RealAuthenticationWebRepository(session: session)
         let pushToken = RealPushTokenWebRepository(session: session)
-        return .init(scannedRoomWebRepository: scannedRoom,
+        return .init(scanWebRepository: scan,
                      authenticationWebRepository: authentication,
                      pushTokenWebRepository: pushToken)
     }
     
     private static func configuredDBRepositories(modelContainer: ModelContainer) -> DIContainer.DBRepositories {
         let scanUploadTask: ScanUploadTaskDBRepository = RealScanUploadTaskDBRepository(modelContainer: modelContainer)
-        let scannedRoom: ScannedRoomDBRepository = RealScannedRoomDBRepository(modelContainer: modelContainer)
+        let scan: ScanDBRepository = RealScanDBRepository(modelContainer: modelContainer)
         return .init(scanUploadTaskDBRepository: scanUploadTask,
-                     scannedRoomDBRepository: scannedRoom)
+                     scanDBRepository: scan)
     }
     
     private static func configuredInteractors(
@@ -107,14 +107,13 @@ extension AppEnvironment {
         dbRepositories: DIContainer.DBRepositories,
         keychainService: KeychainService
     ) -> DIContainer.Interactors {
-        let scanRoom: ScanRoomInteractor = RealScanRoomInteractor(scanUploadTaskDBRepository: dbRepositories.scanUploadTaskDBRepository)
-        let scannedRooms: ScannedRoomsInteractor = RealScannedRoomsInteractor(webRepository: webRepositories.scannedRoomWebRepository, persistenceRepository: dbRepositories.scannedRoomDBRepository)
+        let scan: ScanInteractor = RealScanInteractor(webRepository: webRepositories.scanWebRepository, persistenceRepository: dbRepositories.scanDBRepository)
         let auth: AuthInteractor = RealAuthInteractor(webRepository: webRepositories.authenticationWebRepository, keychainService: keychainService)
         let userPermissions: UserPermissionsInteractor = RealUserPermissionsInteractor(appState: appState, openAppSettings: {
             URL(string: UIApplication.openSettingsURLString).flatMap {
                 UIApplication.shared.open($0, options: [:], completionHandler: nil)
             }
         })
-        return .init(scanRoom: scanRoom, scannedRooms: scannedRooms, auth: auth, userPermissions: userPermissions)
+        return .init(scan: scan, auth: auth, userPermissions: userPermissions)
     }
 }

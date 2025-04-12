@@ -1,5 +1,5 @@
 //
-//  ScanUploadTask.swift
+//  UploadTask.swift
 //  Capstone
 //
 //  Created by Seungwoo Choe on 2025-04-11.
@@ -8,9 +8,9 @@
 import SwiftData
 import Foundation
 
-struct ScanUploadTaskDTO: Sendable {
-    let taskID: UUID
-    let roomName: String
+struct UploadTaskDTO: Sendable {
+    let id: UUID
+    let name: String
     let imageURLs: [URL]
     let createdAt: Date
     let retryCount: Int
@@ -18,41 +18,41 @@ struct ScanUploadTaskDTO: Sendable {
 }
 
 @Model
-final class ScanUploadTask {
-    var taskID: UUID
-    var roomName: String
+final class UploadTask {
+    var id: UUID
+    var name: String
     var imageURLs: [URL]
     var createdAt: Date
     var retryCount: Int
     var uploadStatus: UploadStatus
 
-    init(taskID: UUID = UUID(),
-         roomName: String,
+    init(id: UUID = UUID(),
+         name: String,
          imageURLs: [URL],
          createdAt: Date = Date(),
          retryCount: Int = 0,
          uploadStatus: UploadStatus = .pending) {
-        self.taskID = taskID
-        self.roomName = roomName
+        self.id = id
+        self.name = name
         self.imageURLs = imageURLs
         self.createdAt = createdAt
         self.retryCount = retryCount
         self.uploadStatus = uploadStatus
     }
     
-    convenience init(dto: ScanUploadTaskDTO) {
-        self.init(taskID: dto.taskID,
-                  roomName: dto.roomName,
+    convenience init(dto: UploadTaskDTO) {
+        self.init(id: dto.id,
+                  name: dto.name,
                   imageURLs: dto.imageURLs,
                   createdAt: dto.createdAt,
                   retryCount: dto.retryCount,
                   uploadStatus: dto.uploadStatus)
     }
     
-    func toDTO() -> ScanUploadTaskDTO {
-        return ScanUploadTaskDTO(
-            taskID: taskID,
-            roomName: roomName,
+    func toDTO() -> UploadTaskDTO {
+        return UploadTaskDTO(
+            id: id,
+            name: name,
             imageURLs: imageURLs,
             createdAt: createdAt,
             retryCount: retryCount,

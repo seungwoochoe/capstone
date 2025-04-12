@@ -25,7 +25,7 @@ struct DIContainer {
 extension DIContainer {
     // MARK: - Web Repositories
     struct WebRepositories {
-        let scannedRoomWebRepository: ScannedRoomWebRepository
+        let scanWebRepository: ScanWebRepository
         let authenticationWebRepository: AuthenticationWebRepository
         let pushTokenWebRepository: PushTokenWebRepository
     }
@@ -33,21 +33,19 @@ extension DIContainer {
     // MARK: - Database Repositories
     struct DBRepositories {
         let scanUploadTaskDBRepository: ScanUploadTaskDBRepository
-        let scannedRoomDBRepository: ScannedRoomDBRepository
+        let scanDBRepository: ScanDBRepository
     }
 
     // MARK: - Interactors
     struct Interactors {
-        let scanRoom: ScanRoomInteractor
-        let scannedRooms: ScannedRoomsInteractor
+        let scan: ScanInteractor
         let auth: AuthInteractor
         let userPermissions: UserPermissionsInteractor
 
         /// Stub implementations for testing or preview purposes.
         static var stub: Self {
             .init(
-                scanRoom: StubScanRoomInteractor(),
-                scannedRooms: StubScannedRoomsInteractor(),
+                scan: StubScanInteractor(),
                 auth: StubAuthInteractor(),
                 userPermissions: StubUserPermissionsInteractor()
             )

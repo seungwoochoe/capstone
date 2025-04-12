@@ -12,7 +12,7 @@ extension ModelContainer {
     static func appModelContainer(inMemoryOnly: Bool = false,
                                   isStub: Bool = false)
     throws -> ModelContainer {
-        let schema = Schema([ScannedRoom.self])
+        let schema = Schema([Scan.self])
         let configuration = ModelConfiguration(isStub ? "stub" : nil, schema: schema, isStoredInMemoryOnly: inMemoryOnly)
         return try ModelContainer(for: schema, configurations: [configuration])
     }

@@ -13,19 +13,19 @@ import SwiftData
 struct ContentView: View {
     
     @Environment(\.colorScheme) private var colorScheme
-    @Query(sort: \ScannedRoom.processedDate, order: .reverse) var scannedRooms: [ScannedRoom]
+    @Query(sort: \Scan.processedDate, order: .reverse) var scans: [Scan]
 
     @State private var searchText: String = ""
     @State private var showScanner: Bool = false
     @State private var showAbout: Bool = false
-    @State private var selectedRoom: ScannedRoom? = nil
+    @State private var selected: Scan? = nil
 
-    var filteredRooms: [ScannedRoom] {
+    var filteredScans: [Scan] {
         if searchText.isEmpty {
-            return scannedRooms
+            return scans
         } else {
-            return scannedRooms.filter {
-                $0.roomName.lowercased().contains(searchText.lowercased())
+            return scans.filter {
+                $0.name.lowercased().contains(searchText.lowercased())
             }
         }
     }
@@ -33,11 +33,11 @@ struct ContentView: View {
     var body: some View {
         NavigationStack {
             ZStack(alignment: .bottom) {
-                List(filteredRooms, id: \.roomID) { room in
+                List(filteredScans, id: \.id) { scan in
                     Button {
-                        selectedRoom = room
+                        selected = scan
                     } label: {
-                        RoomRowView(room: room)
+                        ScanRowView(scan: scan)
                     }
                 }
                 .navigationTitle("3D Room Scanner")
@@ -75,7 +75,7 @@ struct ContentView: View {
             }
             .searchable(text: $searchText)
             .overlay {
-                if filteredRooms.isEmpty {
+                if filteredScans.isEmpty {
                     if searchText.isEmpty {
                         ContentUnavailableView {
                             Text("Start Scanning")
@@ -88,8 +88,8 @@ struct ContentView: View {
                     }
                 }
             }
-            .navigationDestination(item: $selectedRoom) { room in
-                Room3DViewer(scannedRoom: room)
+            .navigationDestination(item: $selected) { scan in
+                Model3DViewer(scan: scan)
             }
             .fullScreenCover(isPresented: $showScanner) {
                 RoomScannerView()
@@ -109,8 +109,8 @@ struct ContentView: View {
 
 // MARK: - Room Row View
 
-struct RoomRowView: View {
-    let room: ScannedRoom
+struct ScanRowView: View {
+    let scan: Scan
     
     var body: some View {
         HStack {
@@ -120,7 +120,7 @@ struct RoomRowView: View {
                 .frame(width: 50, height: 50)
                 .cornerRadius(8)
             VStack(alignment: .leading) {
-                Text(room.roomName)
+                Text(scan.name)
                     .font(.headline)
                     .foregroundColor(.primary)
                 Text("Completed")

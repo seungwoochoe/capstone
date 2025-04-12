@@ -9,7 +9,7 @@ import Foundation
 
 enum DeepLink: Equatable {
     
-    case showScannedRoom(roomID: String)
+    case showScan(scanID: String)
     
     init?(url: URL) {
         guard let components = URLComponents(url: url, resolvingAgainstBaseURL: true),
@@ -19,9 +19,9 @@ enum DeepLink: Equatable {
             return nil
         }
         
-        if let item = queryItems.first(where: { $0.name.lowercased() == "roomid" }),
-           let roomID = item.value {
-            self = .showScannedRoom(roomID: roomID)
+        if let item = queryItems.first(where: { $0.name.lowercased() == "scanid" }),
+           let scanID = item.value {
+            self = .showScan(scanID: scanID)
             return
         }
         return nil
@@ -43,11 +43,10 @@ struct RealDeepLinksHandler: DeepLinksHandler {
     
     func open(deepLink: DeepLink) {
         switch deepLink {
-        case .showScannedRoom(let roomID):
-            let routeToScannedRoom = {
+        case .showScan(let scanID):
+            let routeToScan = {
                 self.container.appState.bulkUpdate {
-                    $0.routing.activeTab = .scannedRooms
-                    $0.routing.selectedRoomID = roomID
+                    $0.routing.selectedScanID = scanID
                 }
             }
             
@@ -60,9 +59,9 @@ struct RealDeepLinksHandler: DeepLinksHandler {
             if container.appState.value.routing != defaultRouting {
                 self.container.appState[\.routing] = defaultRouting
                 let delay: DispatchTime = .now() + (ProcessInfo.processInfo.isRunningTests ? 0 : 1.5)
-                DispatchQueue.main.asyncAfter(deadline: delay, execute: routeToScannedRoom)
+                DispatchQueue.main.asyncAfter(deadline: delay, execute: routeToScan)
             } else {
-                routeToScannedRoom()
+                routeToScan()
             }
         }
     }

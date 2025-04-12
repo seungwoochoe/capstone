@@ -17,16 +17,8 @@ struct AppState: Equatable {
 // MARK: - Routing
 
 extension AppState {
-    
-    enum Tab: String, Equatable {
-        case scanRoom
-        case scannedRooms
-        case settings
-    }
-    
     struct ViewRouting: Equatable {
-        var activeTab: AppState.Tab = .scanRoom
-        var selectedRoomID: String? = nil
+        var selectedScanID: String? = nil
     }
 }
 

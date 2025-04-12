@@ -14,8 +14,8 @@ import RealityKit
 struct RoomScannerView: View {
     @State private var capturedSegments: Set<Int> = []
     @State private var capturedImages: [UIImage] = []
-    @State private var isRoomNamePromptPresented: Bool = false
-    @State private var roomName: String = ""
+    @State private var isScanNamePromptPresented: Bool = false
+    @State private var scanName: String = ""
     
     // Store a reference to the active ARView.
     @State private var arView: ARView? = nil
@@ -37,7 +37,7 @@ struct RoomScannerView: View {
             )
             .ignoresSafeArea()
             
-            if !isRoomNamePromptPresented && roomName.isEmpty {
+            if !isScanNamePromptPresented && scanName.isEmpty {
                 VStack {
                     DonutProgressView(capturedSegments: capturedSegments, totalSegments: totalCaptures)
                         .frame(width: 150, height: 150)
@@ -52,13 +52,13 @@ struct RoomScannerView: View {
         }
         .onAppear { startSession() }
         .onDisappear { stopSession() }
-        .alert("Name Your Scan", isPresented: $isRoomNamePromptPresented) {
-            TextField("Enter room name", text: $roomName)
+        .alert("Name Your Scan", isPresented: $isScanNamePromptPresented) {
+            TextField("Enter scan name", text: $scanName)
             Button("OK") {
-                print("Room name: \(roomName)")
+                print("Scan name: \(scanName)")
                 // Add any additional processing logic (e.g., upload/processing) here.
             }
-            .disabled(roomName.isEmpty)
+            .disabled(scanName.isEmpty)
         }
     }
     
@@ -102,7 +102,7 @@ struct RoomScannerView: View {
                     if self.capturedImages.count == self.totalCaptures {
                         print("Capture complete with \(self.capturedImages.count) images.")
                         self.arView?.session.pause()
-                        self.isRoomNamePromptPresented = true
+                        self.isScanNamePromptPresented = true
                     }
                 }
             } else {
@@ -117,8 +117,8 @@ struct RoomScannerView: View {
     private func startSession() {
         capturedSegments = []
         capturedImages = []
-        roomName = ""
-        isRoomNamePromptPresented = false
+        scanName = ""
+        isScanNamePromptPresented = false
     }
     
     private func stopSession() {

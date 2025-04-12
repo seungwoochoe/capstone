@@ -1,5 +1,5 @@
 //
-//  Room3DViewer.swift
+//  Model3DViewer.swift
 //  Capstone
 //
 //  Created by Seungwoo Choe on 2025-04-12.
@@ -8,16 +8,16 @@
 import SwiftUI
 import RealityKit
 
-struct Room3DViewer: View {
+struct Model3DViewer: View {
     
-    let scannedRoom: ScannedRoom
+    let scan: Scan
     @Environment(\.dismiss) private var dismiss
 
     var body: some View {
         NavigationStack {
             ZStack {
                 // ARViewContainer displays the 3D model using RealityKit
-//                ARViewContainer(usdzURL: scannedRoom.usdzURL)
+//                ARViewContainer(usdzURL: scan.usdzURL)
 //                    .ignoresSafeArea()
 //                
                 // Overlay controls for export and deletion
@@ -34,7 +34,7 @@ struct Room3DViewer: View {
                         }
                         
                         Button {
-                            deleteRoom(scannedRoom)
+                            deleteScan(scan)
                             dismiss()
                         } label: {
                             Label("Delete", systemImage: "trash")
@@ -46,7 +46,7 @@ struct Room3DViewer: View {
                     .padding()
                 }
             }
-            .navigationTitle(scannedRoom.roomName)
+            .navigationTitle(scan.name)
         }
     }
     
@@ -57,8 +57,8 @@ struct Room3DViewer: View {
         // (Implement the actual export logic based on your needs.)
     }
     
-    private func deleteRoom(_ room: ScannedRoom) {
-        // Delete the room from local storage.
+    private func deleteScan(_ scan: Scan) {
+        // Delete the scan from local storage.
         // (Integrate SwiftData deletion here.)
     }
 }

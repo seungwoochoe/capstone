@@ -12,8 +12,8 @@ struct SampleData: PreviewModifier {
     
     static func makeSharedContext() async throws -> ModelContainer {
         let config = ModelConfiguration(isStoredInMemoryOnly: true)
-        let container = try ModelContainer(for: ScannedRoom.self, configurations: config)
-        ScannedRoom.makeSampleRooms(in: container)
+        let container = try ModelContainer(for: Scan.self, configurations: config)
+        Scan.makeSampleScans(in: container)
         return container
     }
     
@@ -26,67 +26,67 @@ extension PreviewTrait where T == Preview.ViewTraits {
     @MainActor static var sampleData: Self = .modifier(SampleData())
 }
 
-// MARK: - ScannedRoom
+// MARK: - Scan
 
-extension ScannedRoom {
+extension Scan {
     
-    @MainActor static func makeSampleRooms(in container: ModelContainer) {
+    @MainActor static func makeSampleScans(in container: ModelContainer) {
         let context = container.mainContext
         
-        let sampleDTOs: [ScannedRoomDTO] = [
-            ScannedRoomDTO(
-                roomID: UUID(),
-                roomName: "Living Room",
+        let sampleDTOs: [ScanDTO] = [
+            ScanDTO(
+                id: UUID(),
+                name: "Living Room",
                 usdzURL: URL(string: "https://example.com/livingroom.usdz")!,
                 processedDate: Date()
             ),
-            ScannedRoomDTO(
-                roomID: UUID(),
-                roomName: "Kitchen",
+            ScanDTO(
+                id: UUID(),
+                name: "Kitchen",
                 usdzURL: URL(string: "https://example.com/kitchen.usdz")!,
                 processedDate: Date()
             ),
-            ScannedRoomDTO(
-                roomID: UUID(),
-                roomName: "Bedroom",
+            ScanDTO(
+                id: UUID(),
+                name: "Bedroom",
                 usdzURL: URL(string: "https://example.com/bedroom.usdz")!,
                 processedDate: Date()
             ),
-            ScannedRoomDTO(
-                roomID: UUID(),
-                roomName: "Bathroom",
+            ScanDTO(
+                id: UUID(),
+                name: "Bathroom",
                 usdzURL: URL(string: "https://example.com/livingroom.usdz")!,
                 processedDate: Date()
             ),
-            ScannedRoomDTO(
-                            roomID: UUID(),
-                            roomName: "Living Room",
+            ScanDTO(
+                            id: UUID(),
+                            name: "Living Room",
                             usdzURL: URL(string: "https://example.com/livingroom.usdz")!,
                             processedDate: Date()
                         ),
-                        ScannedRoomDTO(
-                            roomID: UUID(),
-                            roomName: "Kitchen",
+                        ScanDTO(
+                            id: UUID(),
+                            name: "Kitchen",
                             usdzURL: URL(string: "https://example.com/kitchen.usdz")!,
                             processedDate: Date()
                         ),
-                        ScannedRoomDTO(
-                            roomID: UUID(),
-                            roomName: "Bedroom",
+                        ScanDTO(
+                            id: UUID(),
+                            name: "Bedroom",
                             usdzURL: URL(string: "https://example.com/bedroom.usdz")!,
                             processedDate: Date()
                         ),
-                        ScannedRoomDTO(
-                            roomID: UUID(),
-                            roomName: "Bathroom",
+                        ScanDTO(
+                            id: UUID(),
+                            name: "Bathroom",
                             usdzURL: URL(string: "https://example.com/livingroom.usdz")!,
                             processedDate: Date()
                         ),
         ]
         
         sampleDTOs.forEach { dto in
-            let room = ScannedRoom(dto: dto)
-            context.insert(room)
+            let scan = Scan(dto: dto)
+            context.insert(scan)
         }
     }
 }
