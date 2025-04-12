@@ -26,27 +26,27 @@ extension DIContainer {
     // MARK: - Web Repositories
     struct WebRepositories {
         let scanWebRepository: ScanWebRepository
-        let authenticationWebRepository: AuthenticationWebRepository
+        let authWebRepository: AuthWebRepository
         let pushTokenWebRepository: PushTokenWebRepository
     }
 
     // MARK: - Database Repositories
     struct DBRepositories {
-        let UploadTaskDBRepository: UploadTaskDBRepository
+        let uploadTaskDBRepository: UploadTaskDBRepository
         let scanDBRepository: ScanDBRepository
     }
 
     // MARK: - Interactors
     struct Interactors {
-        let scan: ScanInteractor
-        let auth: AuthInteractor
+        let scanInteractor: ScanInteractor
+        let authInteractor: AuthInteractor
         let userPermissions: UserPermissionsInteractor
 
-        /// Stub implementations for testing or preview purposes.
+        // For testing and previews.
         static var stub: Self {
             .init(
-                scan: StubScanInteractor(),
-                auth: StubAuthInteractor(),
+                scanInteractor: StubScanInteractor(),
+                authInteractor: StubAuthInteractor(),
                 userPermissions: StubUserPermissionsInteractor()
             )
         }

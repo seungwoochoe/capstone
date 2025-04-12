@@ -13,6 +13,7 @@ import RealityKit
 
 struct RoomScannerView: View {
     
+    @Environment(\.injected) private var injected
     @Environment(\.dismiss) private var dismiss
     
     @State private var capturedSegments: Set<Int> = []
@@ -71,8 +72,11 @@ struct RoomScannerView: View {
         .alert("Name Your Scan", isPresented: $isScanNamePromptPresented) {
             TextField("Enter scan name", text: $scanName)
             Button("OK") {
-                print("Scan name: \(scanName)")
-                // Add any additional processing logic (e.g., upload/processing) here.
+                Task {
+                    let uploadTaskDTO = try await injected.interactors.scanInteractor.storeUploadTask(scanName: scanName, images: capturedImages)
+                    try await injected.interactors.scanInteractor.upload(uploadTaskDTO: uploadTaskDTO)
+                }
+                dismiss()
             }
             .disabled(scanName.isEmpty)
         }

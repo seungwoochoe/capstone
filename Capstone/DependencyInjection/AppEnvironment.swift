@@ -96,14 +96,14 @@ extension AppEnvironment {
         let authentication = RealAuthenticationWebRepository(session: session)
         let pushToken = RealPushTokenWebRepository(session: session)
         return .init(scanWebRepository: scan,
-                     authenticationWebRepository: authentication,
+                     authWebRepository: authentication,
                      pushTokenWebRepository: pushToken)
     }
     
     private static func configuredDBRepositories(modelContainer: ModelContainer) -> DIContainer.DBRepositories {
         let uploadTask: UploadTaskDBRepository = RealUploadTaskDBRepository(modelContainer: modelContainer)
         let scan: ScanDBRepository = RealScanDBRepository(modelContainer: modelContainer)
-        return .init(UploadTaskDBRepository: uploadTask,
+        return .init(uploadTaskDBRepository: uploadTask,
                      scanDBRepository: scan)
     }
     
@@ -114,13 +114,13 @@ extension AppEnvironment {
         fileManager: FileManager,
         keychainService: KeychainService
     ) -> DIContainer.Interactors {
-        let scan: ScanInteractor = RealScanInteractor(webRepository: webRepositories.scanWebRepository, uploadTaskPersistenceRepository: dbRepositories.UploadTaskDBRepository, scanPersistenceRepository: dbRepositories.scanDBRepository, fileManager: fileManager)
-        let auth: AuthInteractor = RealAuthInteractor(webRepository: webRepositories.authenticationWebRepository, keychainService: keychainService)
+        let scan: ScanInteractor = RealScanInteractor(webRepository: webRepositories.scanWebRepository, uploadTaskPersistenceRepository: dbRepositories.uploadTaskDBRepository, scanPersistenceRepository: dbRepositories.scanDBRepository, fileManager: fileManager)
+        let auth: AuthInteractor = RealAuthInteractor(webRepository: webRepositories.authWebRepository, keychainService: keychainService)
         let userPermissions: UserPermissionsInteractor = RealUserPermissionsInteractor(appState: appState, openAppSettings: {
             URL(string: UIApplication.openSettingsURLString).flatMap {
                 UIApplication.shared.open($0, options: [:], completionHandler: nil)
             }
         })
-        return .init(scan: scan, auth: auth, userPermissions: userPermissions)
+        return .init(scanInteractor: scan, authInteractor: auth, userPermissions: userPermissions)
     }
 }

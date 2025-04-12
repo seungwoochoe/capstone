@@ -14,7 +14,7 @@ protocol AuthInteractor {
 
 struct RealAuthInteractor: AuthInteractor {
     
-    let webRepository: AuthenticationWebRepository
+    let webRepository: AuthWebRepository
     let keychainService: KeychainService
     
     func signIn() async throws {

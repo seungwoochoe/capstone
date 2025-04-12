@@ -12,11 +12,11 @@ struct AuthResponse: Codable, Equatable {
     let userID: String
 }
 
-protocol AuthenticationWebRepository: WebRepository {
+protocol AuthWebRepository: WebRepository {
     func authenticate(with appleToken: String) async throws -> AuthResponse
 }
 
-struct RealAuthenticationWebRepository: AuthenticationWebRepository {
+struct RealAuthenticationWebRepository: AuthWebRepository {
     let session: URLSession
     let baseURL: String = "https://your-server.com/api/auth"
 

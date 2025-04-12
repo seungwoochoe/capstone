@@ -8,15 +8,6 @@
 import SwiftUI
 import SwiftData
 
-struct UploadTaskDTO: Sendable {
-    let id: UUID
-    let name: String
-    let imageURLs: [URL]
-    let createdAt: Date
-    let retryCount: Int
-    let uploadStatus: DBModel.UploadTask.Status
-}
-
 extension DBModel {
     
     @Model
@@ -70,4 +61,24 @@ extension DBModel {
             )
         }
     }
+}
+
+struct UploadTaskDTO: Sendable {
+    let id: UUID
+    let name: String
+    let imageURLs: [URL]
+    let createdAt: Date
+    let retryCount: Int
+    let uploadStatus: DBModel.UploadTask.Status
+}
+
+extension UploadTaskDTO {
+    static let sample = UploadTaskDTO(
+        id: UUID(),
+        name: "Sample",
+        imageURLs: [URL(string: "https://example.com/image1.jpg")!],
+        createdAt: Date(),
+        retryCount: 0,
+        uploadStatus: .pending
+    )
 }
