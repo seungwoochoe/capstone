@@ -10,108 +10,83 @@ import ARKit
 import RealityKit
 
 // MARK: - RoomScannerView
+
 struct RoomScannerView: View {
-    // Scanning state stored directly in the view.
-    @State private var captureProgress: Float = 0.0
     @State private var capturedCount: Int = 0
-    
-    // Store segments (each 6° wide) that have already been captured.
     @State private var capturedSegments: Set<Int> = []
     
-    // Constants.
-    private let totalImages: Int = 60
+    private let totalCaptures: Int = 60
     private let angleThresholdDegrees: Float = 6.0  // One segment per 6° rotation.
     
     var body: some View {
-        ZStack {
-            // ARView container with a closure to receive yaw updates.
+        ZStack(alignment: .bottom) {
             ARViewContainer { currentYaw in
                 processCameraAngle(currentYaw)
             }
             .ignoresSafeArea()
             
-            // Overlay: scanning guide and progress indicator.
             VStack {
-                Spacer()
-                VStack(spacing: 8) {
-                    Text("Rotate Slowly")
-                        .font(.headline)
-                        .foregroundColor(.white)
-                        .shadow(radius: 2)
-                    
-                    Text("Capturing \(capturedCount) / \(totalImages) images")
-                        .font(.subheadline)
-                        .foregroundColor(.white)
-                        .shadow(radius: 2)
-                    
-                    ProgressView(value: captureProgress)
-                        .progressViewStyle(LinearProgressViewStyle())
-                        .padding(.horizontal, 40)
-                }
-                .padding(.bottom, 50)
+                DonutProgressView(capturedSegments: capturedSegments, totalSegments: totalCaptures)
+                    .frame(width: 150, height: 150)
+                    .padding(.bottom, 50)
+                
+                Text("Rotate Slowly")
+                    .font(.headline)
+                    .foregroundColor(.white)
+                    .shadow(radius: 2)
             }
         }
         .onAppear { startSession() }
         .onDisappear { stopSession() }
     }
     
-    /// Converts a yaw value (in radians) to normalized degrees [0, 360).
     private func normalizedDegrees(from yaw: Float) -> Float {
         let degrees = yaw * 180 / .pi
         return fmod(degrees + 360, 360)
     }
     
-    /// Processes each AR camera update.
     private func processCameraAngle(_ currentYaw: Float) {
-        // Convert the raw yaw (in radians) to a normalized angle in degrees.
         let currentAngle = normalizedDegrees(from: currentYaw)
-        // Determine the segment index based on our 6° threshold.
         let segment = Int(currentAngle / angleThresholdDegrees)
-        
-        // Only capture a segment if it hasn't been captured before.
         if !capturedSegments.contains(segment) {
             capturedSegments.insert(segment)
             captureImage(currentAngle: currentAngle)
         }
     }
     
-    /// Triggers an image capture (replace the print with your interactor call).
     private func captureImage(currentAngle: Float) {
-        guard capturedCount < totalImages else { return }
+        guard capturedCount < totalCaptures else { return }
         capturedCount += 1
-        captureProgress = Float(capturedCount) / Float(totalImages)
         
-        // Replace with your image capture interactor call.
         print("Captured image \(capturedCount) at angle: \(currentAngle)° (Segment: \(Int(currentAngle / angleThresholdDegrees)))")
         
-        if capturedCount == totalImages {
+        if capturedCount == totalCaptures {
             print("Capture complete with \(capturedCount) images.")
-            // Initiate any post-capture processing here.
         }
     }
     
-    /// Resets scanning state at the beginning of a new session.
     private func startSession() {
         capturedCount = 0
-        captureProgress = 0.0
         capturedSegments = []
     }
     
-    /// Cleans up any resources, if needed.
     private func stopSession() {
-        // Pause or stop the AR session as required.
+        // Stop your AR session if needed.
     }
 }
 
-// MARK: - ARViewContainer using UIViewRepresentable
+// MARK: - ARViewContainer
+
 struct ARViewContainer: UIViewRepresentable {
+    
     /// Closure that passes current yaw (in radians) updates back to the view.
     let onCameraUpdate: (Float) -> Void
     
     func makeUIView(context: Context) -> ARView {
         let arView = ARView(frame: .zero)
         let configuration = ARWorldTrackingConfiguration()
-        // For this simple scanner, no plane detection is required.
+        
+        // For this scanner, no plane detection is required.
         configuration.planeDetection = []
         arView.session.run(configuration)
         
@@ -130,7 +105,6 @@ struct ARViewContainer: UIViewRepresentable {
         Coordinator(onCameraUpdate: onCameraUpdate)
     }
     
-    /// Coordinator relays ARSession updates.
     class Coordinator: NSObject, ARSessionDelegate {
         var onCameraUpdate: (Float) -> Void
         weak var arView: ARView?
@@ -145,6 +119,7 @@ struct ARViewContainer: UIViewRepresentable {
         func session(_ session: ARSession, didUpdate frame: ARFrame) {
             let camera = frame.camera
             let eulerAngles = camera.eulerAngles
+            
             // eulerAngles.x is the pitch. Only update if the phone is held nearly horizontally.
             if abs(eulerAngles.x) > pitchThreshold {
                 return  // Ignore frames when the device is tilted up or down.
@@ -156,4 +131,107 @@ struct ARViewContainer: UIViewRepresentable {
             }
         }
     }
+}
+
+// MARK: - DonutProgressView
+
+struct DonutProgressView: UIViewRepresentable {
+    
+    let capturedSegments: Set<Int>
+    let totalSegments: Int
+
+    func makeUIView(context: Context) -> SCNView {
+        let scnView = SCNView()
+        scnView.backgroundColor = .clear
+
+        // Create an empty scene.
+        let scene = SCNScene()
+        scnView.scene = scene
+        
+        // Build and add the doughnut node.
+        let donut = context.coordinator.makeDonutNode(totalSegments: totalSegments)
+        scene.rootNode.addChildNode(donut)
+        
+        // Set up a simple camera.
+        let cameraNode = SCNNode()
+        cameraNode.camera = SCNCamera()
+        // Position the camera so it looks at the donut.
+        cameraNode.position = SCNVector3(0, 0, 2)
+        scene.rootNode.addChildNode(cameraNode)
+        
+        // Default lighting.
+        scnView.autoenablesDefaultLighting = true
+        
+        return scnView
+    }
+
+    func updateUIView(_ scnView: SCNView, context: Context) {
+        // Update each segment’s material based on capture progress.
+        guard let donut = scnView.scene?.rootNode.childNode(withName: "donut", recursively: false) else { return }
+        
+        for i in 0..<totalSegments {
+            if let segmentNode = donut.childNode(withName: "segment\(i)", recursively: false),
+               let material = segmentNode.geometry?.firstMaterial {
+                // Use green if captured, otherwise light gray.
+                material.diffuse.contents = capturedSegments.contains(i) ? UIColor.systemGreen : UIColor.lightGray
+            }
+        }
+    }
+
+    func makeCoordinator() -> Coordinator {
+        return Coordinator()
+    }
+
+    class Coordinator: NSObject {
+        
+        // Creates the donut node composed of individual segments.
+        func makeDonutNode(totalSegments: Int) -> SCNNode {
+            let donutNode = SCNNode()
+            donutNode.name = "donut"
+            
+            // Rotate the donut to tilt it on its X-axis.
+            donutNode.eulerAngles.x = +Float.pi / 6
+            
+            // Define the ring’s geometry.
+            let innerRadius: CGFloat = 0.2
+            let outerRadius: CGFloat = 0.8
+            let thickness: CGFloat = outerRadius - innerRadius
+            let midRadius: CGFloat = (innerRadius + outerRadius) / 2
+
+            // Calculate the angle per segment.
+            let anglePerSegment = (2 * CGFloat.pi) / CGFloat(totalSegments)
+            
+            // Create segments as small boxes.
+            for i in 0..<totalSegments {
+                // Compute approximate arc length.
+                let chord = 2 * midRadius * sin(anglePerSegment / 2)
+                let box = SCNBox(width: chord, height: 0.05, length: thickness, chamferRadius: 0.005)
+                
+                // Default color for un-captured segments.
+                let material = SCNMaterial()
+                material.diffuse.contents = UIColor.lightGray
+                box.materials = [material]
+                
+                let segmentNode = SCNNode(geometry: box)
+                segmentNode.name = "segment\(i)"
+                
+                // Calculate position along a circle.
+                let angle = anglePerSegment * CGFloat(i)
+                let x = midRadius * cos(angle)
+                let z = midRadius * sin(angle)
+                segmentNode.position = SCNVector3(x, 0, z)
+                
+                // Rotate segment so that its longer axis lies tangentially.
+                segmentNode.eulerAngles = SCNVector3(0, -Float(angle), 0)
+                
+                donutNode.addChildNode(segmentNode)
+            }
+            
+            return donutNode
+        }
+    }
+}
+
+#Preview {
+    RoomScannerView()
 }
