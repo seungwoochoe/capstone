@@ -55,7 +55,7 @@ struct RoomScannerView: View {
         // we ensure that when normalizedAngle == 270°, scanningAngle becomes 0°.
         // Also, as you rotate clockwise (reducing normalizedAngle),
         // the scanningAngle increases, marking segments in clockwise order.
-        let scanningAngle = fmod(270 - normalizedAngle + 360, 360)
+        let scanningAngle = fmod(90 + normalizedAngle + 360, 360)
         
         // Determine which segment should be captured.
         let segment = Int(scanningAngle / angleThresholdDegrees)
@@ -195,46 +195,61 @@ struct DonutProgressView: UIViewRepresentable {
     }
 
     class Coordinator: NSObject {
-        
-        // Creates the donut node composed of individual segments.
+
+        // Creates the donut node composed of smooth, curved segments.
         func makeDonutNode(totalSegments: Int) -> SCNNode {
             let donutNode = SCNNode()
             donutNode.name = "donut"
-            
-            // Rotate the donut to tilt it on its X-axis.
+            // Tilt the whole donut.
             donutNode.eulerAngles.x = +Float.pi / 6
             
-            // Define the ring’s geometry.
-            let innerRadius: CGFloat = 0.2
+            // Define radii and extrusion depth.
+            let innerRadius: CGFloat = 0.5
             let outerRadius: CGFloat = 0.8
-            let thickness: CGFloat = outerRadius - innerRadius
-            let midRadius: CGFloat = (innerRadius + outerRadius) / 2
-
-            // Calculate the angle per segment.
+            let extrusionDepth: CGFloat = 0.05
             let anglePerSegment = (2 * CGFloat.pi) / CGFloat(totalSegments)
             
-            // Create segments as small boxes.
             for i in 0..<totalSegments {
-                // Compute approximate arc length.
-                let chord = 2 * midRadius * sin(anglePerSegment / 2)
-                let box = SCNBox(width: chord, height: 0.05, length: thickness, chamferRadius: 0.005)
+                let startAngle = anglePerSegment * CGFloat(i)
+                let endAngle = startAngle + anglePerSegment
                 
-                // Default color for un-captured segments.
+                // Create a path for the donut segment.
+                let path = UIBezierPath()
+                // Start at the inner circle at the start angle.
+                path.move(to: CGPoint(x: innerRadius * cos(startAngle), y: innerRadius * sin(startAngle)))
+                // Draw the inner arc.
+                path.addArc(withCenter: .zero,
+                            radius: innerRadius,
+                            startAngle: startAngle,
+                            endAngle: endAngle,
+                            clockwise: true)
+                // Draw a line connecting to the outer circle.
+                path.addLine(to: CGPoint(x: outerRadius * cos(endAngle), y: outerRadius * sin(endAngle)))
+                // Draw the outer arc (going in the reverse direction to close the shape).
+                path.addArc(withCenter: .zero,
+                            radius: outerRadius,
+                            startAngle: endAngle,
+                            endAngle: startAngle,
+                            clockwise: false)
+                // Close the path.
+                path.close()
+                
+                // Create a shape from the path with the desired extrusion depth.
+                let shape = SCNShape(path: path, extrusionDepth: extrusionDepth)
+                // Optional: set a small chamfer to further smooth the edges.
+                shape.chamferRadius = 0.005
+                shape.chamferMode = .both
+                
+                // Create a material (light gray by default).
                 let material = SCNMaterial()
                 material.diffuse.contents = UIColor.lightGray
-                box.materials = [material]
+                shape.materials = [material]
                 
-                let segmentNode = SCNNode(geometry: box)
+                // Create a node for the segment.
+                let segmentNode = SCNNode(geometry: shape)
                 segmentNode.name = "segment\(i)"
-                
-                // Calculate position along a circle.
-                let angle = anglePerSegment * CGFloat(i)
-                let x = midRadius * cos(angle)
-                let z = midRadius * sin(angle)
-                segmentNode.position = SCNVector3(x, 0, z)
-                
-                // Rotate segment so that its longer axis lies tangentially.
-                segmentNode.eulerAngles = SCNVector3(0, -Float(angle), 0)
+                // Rotate the segment so that its flat face is horizontal.
+                segmentNode.eulerAngles.x = -Float.pi / 2
                 
                 donutNode.addChildNode(segmentNode)
             }
