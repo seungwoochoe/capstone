@@ -22,6 +22,16 @@ struct ContentView: View {
     @State private var showScanner: Bool = false
     @State private var showAbout: Bool = false
     @State private var selected: DBModel.Scan? = nil
+    
+    var filteredUploadTasks: [DBModel.UploadTask] {
+        if searchText.isEmpty {
+            return uploadTasks
+        } else {
+            return uploadTasks.filter {
+                $0.name.lowercased().contains(searchText.lowercased())
+            }
+        }
+    }
 
     var filteredScans: [DBModel.Scan] {
         if searchText.isEmpty {
@@ -36,20 +46,36 @@ struct ContentView: View {
     var body: some View {
         NavigationStack {
             ZStack(alignment: .bottom) {
-                List {
-                    ForEach(uploadTasks, id: \.id) { uploadTask in
-                        UploadTaskRowView(uploadTask: uploadTask)
+                Group {
+                    if !searchIsPresented && filteredUploadTasks.isEmpty && filteredScans.isEmpty {
+                        ScrollView {
+                            ContentUnavailableView {
+                                Text("Start Scanning")
+                                    .fontWeight(.semibold)
+                            } description: {
+                                Text("Tap the plus button to get started.")
+                            }
+                        }
+                        .padding(.bottom, 40)
+                        .defaultScrollAnchor(.center, for: .alignment)
                     }
-                    .onDelete(perform: deleteUploadTasks)
-                    
-                    ForEach(filteredScans, id: \.id) { scan in
-                        Button {
-                            selected = scan
-                        } label: {
-                            ScanRowView(scan: scan)
+                    else {
+                        List {
+                            ForEach(filteredUploadTasks, id: \.id) { uploadTask in
+                                UploadTaskRowView(uploadTask: uploadTask)
+                            }
+                            .onDelete(perform: deleteUploadTasks)
+                            
+                            ForEach(filteredScans, id: \.id) { scan in
+                                Button {
+                                    selected = scan
+                                } label: {
+                                    ScanRowView(scan: scan)
+                                }
+                            }
+                            .onDelete(perform: deleteScan)
                         }
                     }
-                    .onDelete(perform: deleteScan)
                 }
                 .navigationTitle("3D Room Scanner")
                 .toolbar {
@@ -88,17 +114,8 @@ struct ContentView: View {
             }
             .searchable(text: $searchText, isPresented: $searchIsPresented)
             .overlay {
-                if uploadTasks.isEmpty && filteredScans.isEmpty {
-                    if searchText.isEmpty {
-                        ContentUnavailableView {
-                            Text("Start Scanning")
-                                .fontWeight(.semibold)
-                        } description: {
-                            Text("Tap the plus button to get started.")
-                        }
-                    } else {
-                        ContentUnavailableView.search(text: searchText)
-                    }
+                if searchIsPresented && uploadTasks.isEmpty && filteredScans.isEmpty {
+                    ContentUnavailableView.search(text: searchText)
                 }
             }
             .navigationDestination(item: $selected) { scan in
@@ -117,7 +134,7 @@ struct ContentView: View {
     
     private func deleteUploadTasks(offsets: IndexSet) {
         for index in offsets {
-            let uploadTask = uploadTasks[index]
+            let uploadTask = filteredUploadTasks[index]
             
             Task {
                 try await injected.interactors.scanInteractor.delete(uploadTask: uploadTask)
@@ -127,7 +144,7 @@ struct ContentView: View {
     
     private func deleteScan(offsets: IndexSet) {
         for index in offsets {
-            let scan = scans[index]
+            let scan = filteredScans[index]
             
             Task {
                 try await injected.interactors.scanInteractor.delete(scan: scan)
