@@ -91,7 +91,7 @@ struct ContentView: View {
             .navigationDestination(item: $selectedRoom) { room in
                 Room3DViewer(scannedRoom: room)
             }
-            .sheet(isPresented: $showScanner) {
+            .fullScreenCover(isPresented: $showScanner) {
                 RoomScannerView()
             }
             .sheet(isPresented: $showAbout) {

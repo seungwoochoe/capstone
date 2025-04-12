@@ -279,7 +279,9 @@
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = Capstone/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = "3D Room Scanner";
+				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.utilities";
+				INFOPLIST_KEY_NSCameraUsageDescription = "Camera Permission Required";
 				INFOPLIST_KEY_NSHumanReadableCopyright = "© 2025 Seungwoo Choe";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
@@ -317,7 +319,9 @@
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = Capstone/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = "3D Room Scanner";
+				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.utilities";
+				INFOPLIST_KEY_NSCameraUsageDescription = "Camera Permission Required";
 				INFOPLIST_KEY_NSHumanReadableCopyright = "© 2025 Seungwoo Choe";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;

@@ -9,6 +9,7 @@ import SwiftUI
 import RealityKit
 
 struct Room3DViewer: View {
+    
     let scannedRoom: ScannedRoom
     @Environment(\.dismiss) private var dismiss
 
@@ -16,9 +17,9 @@ struct Room3DViewer: View {
         NavigationStack {
             ZStack {
                 // ARViewContainer displays the 3D model using RealityKit
-                ARViewContainer(usdzURL: scannedRoom.usdzURL)
-                    .ignoresSafeArea()
-                
+//                ARViewContainer(usdzURL: scannedRoom.usdzURL)
+//                    .ignoresSafeArea()
+//                
                 // Overlay controls for export and deletion
                 VStack {
                     Spacer()
@@ -63,25 +64,25 @@ struct Room3DViewer: View {
 }
 
 // MARK: - ARView Container
-
-struct ARViewContainer: UIViewRepresentable {
-    let usdzURL: URL
-
-    func makeUIView(context: Context) -> ARView {
-        let arView = ARView(frame: .zero)
-        // Attempt to load the USDZ model and add it to the scene.
-        do {
-            let modelEntity = try ModelEntity.load(contentsOf: usdzURL)
-            let anchorEntity = AnchorEntity(world: .zero)
-            anchorEntity.addChild(modelEntity)
-            arView.scene.addAnchor(anchorEntity)
-        } catch {
-            print("Error loading model: \(error)")
-        }
-        return arView
-    }
-    
-    func updateUIView(_ uiView: ARView, context: Context) {
-        // Update the AR view if needed.
-    }
-}
+//
+//struct ARViewContainer: UIViewRepresentable {
+//    let usdzURL: URL
+//
+//    func makeUIView(context: Context) -> ARView {
+//        let arView = ARView(frame: .zero)
+//        // Attempt to load the USDZ model and add it to the scene.
+//        do {
+//            let modelEntity = try ModelEntity.load(contentsOf: usdzURL)
+//            let anchorEntity = AnchorEntity(world: .zero)
+//            anchorEntity.addChild(modelEntity)
+//            arView.scene.addAnchor(anchorEntity)
+//        } catch {
+//            print("Error loading model: \(error)")
+//        }
+//        return arView
+//    }
+//    
+//    func updateUIView(_ uiView: ARView, context: Context) {
+//        // Update the AR view if needed.
+//    }
+//}
