@@ -37,6 +37,7 @@ extension AppEnvironment {
         
         let appState = Store<AppState>(AppState())
         let session = configuredURLSession()
+        let fileManager = configuredFileManager()
         let keychainService = configuredKeychainService()
         let modelContainer = configuredModelContainer()
         
@@ -45,6 +46,7 @@ extension AppEnvironment {
         let interactors = configuredInteractors(appState: appState,
                                                 webRepositories: webRepositories,
                                                 dbRepositories: dbRepositories,
+                                                fileManager: fileManager,
                                                 keychainService: keychainService)
 
         let diContainer = DIContainer(appState: appState, interactors: interactors)
@@ -72,6 +74,10 @@ extension AppEnvironment {
         return URLSession(configuration: configuration)
     }
     
+    private static func configuredFileManager() -> FileManager {
+        return FileManager.default
+    }
+    
     private static func configuredModelContainer() -> ModelContainer {
         do {
             return try ModelContainer.appModelContainer()
@@ -95,9 +101,9 @@ extension AppEnvironment {
     }
     
     private static func configuredDBRepositories(modelContainer: ModelContainer) -> DIContainer.DBRepositories {
-        let scanUploadTask: UploadTaskDBRepository = RealUploadTaskDBRepository(modelContainer: modelContainer)
+        let uploadTask: UploadTaskDBRepository = RealUploadTaskDBRepository(modelContainer: modelContainer)
         let scan: ScanDBRepository = RealScanDBRepository(modelContainer: modelContainer)
-        return .init(scanUploadTaskDBRepository: scanUploadTask,
+        return .init(UploadTaskDBRepository: uploadTask,
                      scanDBRepository: scan)
     }
     
@@ -105,9 +111,10 @@ extension AppEnvironment {
         appState: Store<AppState>,
         webRepositories: DIContainer.WebRepositories,
         dbRepositories: DIContainer.DBRepositories,
+        fileManager: FileManager,
         keychainService: KeychainService
     ) -> DIContainer.Interactors {
-        let scan: ScanInteractor = RealScanInteractor(webRepository: webRepositories.scanWebRepository, persistenceRepository: dbRepositories.scanDBRepository)
+        let scan: ScanInteractor = RealScanInteractor(webRepository: webRepositories.scanWebRepository, uploadTaskPersistenceRepository: dbRepositories.UploadTaskDBRepository, scanPersistenceRepository: dbRepositories.scanDBRepository, fileManager: fileManager)
         let auth: AuthInteractor = RealAuthInteractor(webRepository: webRepositories.authenticationWebRepository, keychainService: keychainService)
         let userPermissions: UserPermissionsInteractor = RealUserPermissionsInteractor(appState: appState, openAppSettings: {
             URL(string: UIApplication.openSettingsURLString).flatMap {

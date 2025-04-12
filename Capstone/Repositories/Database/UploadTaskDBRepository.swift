@@ -26,15 +26,18 @@ final actor RealUploadTaskDBRepository: UploadTaskDBRepository {
     }
     
     func fetchPendingUploadTasks() async throws -> [UploadTaskDTO] {
-//        let predicate = #Predicate<ScanUploadTask> {
-//            $0.uploadStatus == UploadStatus.pending ||
-//            $0.uploadStatus == UploadStatus.failed
-//        }
-//        let fetchDescriptor = FetchDescriptor<ScanUploadTask>(predicate: predicate)
-//        
-//        let tasks = try modelContext.fetch(fetchDescriptor)
-//        return tasks.map { $0.toDTO() }
-        return []
+        // Workaround for the issue where #Predicate doesn’t work with enums
+        let pending = UploadStatus.pending
+        let failed = UploadStatus.failed
+        
+        let predicate = #Predicate<UploadTask> {
+            $0.uploadStatus == pending ||
+            $0.uploadStatus == failed
+        }
+        let fetchDescriptor = FetchDescriptor<UploadTask>(predicate: predicate)
+        
+        let tasks = try modelContext.fetch(fetchDescriptor)
+        return tasks.map { $0.toDTO() }
     }
     
     func update(uploadTaskDTO: UploadTaskDTO, for taskID: UUID) async throws {
