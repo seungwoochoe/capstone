@@ -88,7 +88,10 @@ struct RoomScannerView: View {
 
 struct ARViewContainer: UIViewRepresentable {
     
-    /// Closure that passes current yaw (in radians) updates back to the view.
+    // Threshold (in radians) for pitch. Here 15° ≈ 0.26 radians.
+    private static let pitchThreshold: Float = 0.26
+    
+    // Closure that passes current yaw (in radians) updates back to the view.
     let onCameraUpdate: (Float) -> Void
     
     func makeUIView(context: Context) -> ARView {
@@ -118,9 +121,6 @@ struct ARViewContainer: UIViewRepresentable {
         var onCameraUpdate: (Float) -> Void
         weak var arView: ARView?
         
-        // Threshold (in radians) for pitch. Here 15° ≈ 0.26 radians.
-        let pitchThreshold: Float = 0.26
-        
         init(onCameraUpdate: @escaping (Float) -> Void) {
             self.onCameraUpdate = onCameraUpdate
         }
@@ -131,8 +131,9 @@ struct ARViewContainer: UIViewRepresentable {
             
             // eulerAngles.x is the pitch. Only update if the phone is held nearly horizontally.
             if abs(eulerAngles.x) > pitchThreshold {
-                return  // Ignore frames when the device is tilted up or down.
+                return  // Ignore frames when the device is tilted up or down too much.
             }
+            
             // Use the yaw from eulerAngles.y.
             let currentYaw = eulerAngles.y
             DispatchQueue.main.async {
@@ -233,7 +234,8 @@ struct DonutProgressView: UIViewRepresentable {
                 
                 // Create a shape from the path with the desired extrusion depth.
                 let shape = SCNShape(path: path, extrusionDepth: extrusionDepth)
-                // Optional: set a small chamfer to further smooth the edges.
+                
+                // Set a small chamfer to further smooth the edges.
                 shape.chamferRadius = 0.005
                 shape.chamferMode = .both
                 
@@ -245,6 +247,7 @@ struct DonutProgressView: UIViewRepresentable {
                 // Create a node for the segment.
                 let segmentNode = SCNNode(geometry: shape)
                 segmentNode.name = "segment\(i)"
+                
                 // Rotate the segment so that its flat face is horizontal.
                 segmentNode.eulerAngles.x = -Float.pi / 2
                 
