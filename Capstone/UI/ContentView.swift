@@ -14,6 +14,7 @@ struct ContentView: View {
     
     @Environment(\.colorScheme) private var colorScheme
     @Query(sort: \Scan.processedDate, order: .reverse) var scans: [Scan]
+    @Query(sort: \UploadTask.createdAt, order: .reverse) var uploadTasks: [UploadTask]
 
     @State private var searchIsPresented: Bool = false
     @State private var searchText: String = ""
@@ -34,11 +35,17 @@ struct ContentView: View {
     var body: some View {
         NavigationStack {
             ZStack(alignment: .bottom) {
-                List(filteredScans, id: \.id) { scan in
-                    Button {
-                        selected = scan
-                    } label: {
-                        ScanRowView(scan: scan)
+                List {
+                    ForEach(uploadTasks, id: \.id) { uploadTask in
+                        UploadTaskRowView(uploadTask: uploadTask)
+                    }
+                    
+                    ForEach(filteredScans, id: \.id) { scan in
+                        Button {
+                            selected = scan
+                        } label: {
+                            ScanRowView(scan: scan)
+                        }
                     }
                 }
                 .navigationTitle("3D Room Scanner")
@@ -78,7 +85,7 @@ struct ContentView: View {
             }
             .searchable(text: $searchText, isPresented: $searchIsPresented)
             .overlay {
-                if filteredScans.isEmpty {
+                if uploadTasks.isEmpty && filteredScans.isEmpty {
                     if searchText.isEmpty {
                         ContentUnavailableView {
                             Text("Start Scanning")
@@ -107,6 +114,29 @@ struct ContentView: View {
     
     private func logOutUser() {
         
+    }
+}
+
+// MARK: - UploadTask Row View
+
+struct UploadTaskRowView: View {
+    let uploadTask: UploadTask
+    
+    var body: some View {
+        HStack {
+            Rectangle()
+                .fill(Color.gray.opacity(0.3))
+                .frame(width: 50, height: 50)
+                .cornerRadius(8)
+            VStack(alignment: .leading) {
+                Text(uploadTask.name)
+                    .font(.headline)
+                    .foregroundColor(.primary)
+                Text(uploadTask.uploadStatus.rawValue)
+                    .font(.subheadline)
+                    .foregroundColor(.secondary)
+            }
+        }
     }
 }
 
@@ -150,6 +180,6 @@ struct BottomGradientBlur: View {
 
 // MARK: - Preview
 
-#Preview(traits: .scanSampleData) {
+#Preview(traits: .uploadTaskSampleData) {
     ContentView()
 }
