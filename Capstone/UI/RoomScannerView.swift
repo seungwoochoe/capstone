@@ -14,15 +14,28 @@ import RealityKit
 struct RoomScannerView: View {
     @State private var capturedCount: Int = 0
     @State private var capturedSegments: Set<Int> = []
+    @State private var capturedImages: [UIImage] = []
+    @State private var isRoomNamePromptPresented: Bool = false
+    @State private var roomName: String = ""
+    
+    // Store a reference to the active ARView.
+    @State private var arView: ARView? = nil
     
     private let totalCaptures: Int = 60
     private let angleThresholdDegrees: Float = 6.0  // One segment per 6° rotation.
     
     var body: some View {
         ZStack(alignment: .bottom) {
-            ARViewContainer { currentYaw in
-                processCameraAngle(currentYaw)
-            }
+            ARViewContainer(
+                onCameraUpdate: { currentYaw in
+                    processCameraAngle(currentYaw)
+                },
+                onARViewCreated: { view in
+                    DispatchQueue.main.async {
+                        self.arView = view
+                    }
+                }
+            )
             .ignoresSafeArea()
             
             VStack {
@@ -38,6 +51,17 @@ struct RoomScannerView: View {
         }
         .onAppear { startSession() }
         .onDisappear { stopSession() }
+        // Overlay a custom prompt when all captures are complete.
+        .overlay {
+            if isRoomNamePromptPresented {
+                RoomNamePrompt(roomName: $roomName) { name in
+                    // When the user taps OK, print the room name.
+                    print("Room name: \(name)")
+                    // Continue with upload/processing logic, then dismiss the prompt.
+                    isRoomNamePromptPresented = false
+                }
+            }
+        }
     }
     
     private func normalizedDegrees(from yaw: Float) -> Float {
@@ -52,8 +76,6 @@ struct RoomScannerView: View {
         let scanningAngle = fmod(90 + normalizedAngle + 360, 360)
         
         // Offset by half the segment angle to center the segment thresholds.
-        // This ensures that values near 360° and 0° (i.e., when wrapping around)
-        // are considered part of the same segment.
         let adjustedAngle = fmod(scanningAngle + angleThresholdDegrees / 2, 360)
         let segment = Int(adjustedAngle / angleThresholdDegrees)
         
@@ -67,20 +89,71 @@ struct RoomScannerView: View {
         guard capturedCount < totalCaptures else { return }
         capturedCount += 1
         
-        print("Captured image \(capturedCount) at angle: \(currentAngle)° (Segment: \(Int(currentAngle / angleThresholdDegrees)))")
+        guard let arView = arView else {
+            print("ARView not ready for snapshot. Retrying...")
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                captureImage(currentAngle: currentAngle)
+            }
+            return
+        }
         
-        if capturedCount == totalCaptures {
-            print("Capture complete with \(capturedCount) images.")
+        arView.snapshot(saveToHDR: false) { image in
+            if let image = image {
+                DispatchQueue.main.async {
+                    self.capturedImages.append(image)
+                    print("Captured image \(self.capturedCount) at angle: \(currentAngle)°")
+                    if self.capturedCount == self.totalCaptures {
+                        print("Capture complete with \(self.capturedCount) images.")
+                        // Pause the AR session to stop the delegate from holding ARFrames.
+                        self.arView?.session.pause()
+                        self.isRoomNamePromptPresented = true
+                    }
+                }
+            } else {
+                print("Snapshot failed. Retrying...")
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                    captureImage(currentAngle: currentAngle)
+                }
+            }
         }
     }
     
     private func startSession() {
+        // Is this needed?
         capturedCount = 0
         capturedSegments = []
+        capturedImages = []
+        roomName = ""
+        isRoomNamePromptPresented = false
     }
     
     private func stopSession() {
-        // Stop your AR session if needed.
+        // Implement any needed AR session cleanup.
+    }
+}
+
+// MARK: - Room Name Prompt
+
+struct RoomNamePrompt: View {
+    @Binding var roomName: String
+    var onComplete: (String) -> Void
+    
+    var body: some View {
+        VStack(spacing: 20) {
+            Text("Name Your Scan")
+                .font(.headline)
+            TextField("Enter room name", text: $roomName)
+                .textFieldStyle(RoundedBorderTextFieldStyle())
+                .padding(.horizontal)
+            Button("OK") {
+                onComplete(roomName)
+            }
+            .buttonStyle(.borderedProminent)
+        }
+        .padding()
+        .background(.ultraThinMaterial)
+        .cornerRadius(12)
+        .padding()
     }
 }
 
@@ -88,11 +161,10 @@ struct RoomScannerView: View {
 
 struct ARViewContainer: UIViewRepresentable {
     
-    // Threshold (in radians) for pitch. Here 15° ≈ 0.26 radians.
-    private static let pitchThreshold: Float = 0.26
-    
-    // Closure that passes current yaw (in radians) updates back to the view.
+    // Closure that passes current yaw (in radians) updates back to RoomScannerView.
     let onCameraUpdate: (Float) -> Void
+    // New closure to pass the created ARView back.
+    let onARViewCreated: (ARView) -> Void
     
     func makeUIView(context: Context) -> ARView {
         let arView = ARView(frame: .zero)
@@ -105,6 +177,9 @@ struct ARViewContainer: UIViewRepresentable {
         // Set the ARSession delegate.
         arView.session.delegate = context.coordinator
         context.coordinator.arView = arView
+        
+        // Pass the created ARView back to the parent view.
+        onARViewCreated(arView)
         
         return arView
     }
@@ -119,7 +194,11 @@ struct ARViewContainer: UIViewRepresentable {
     
     class Coordinator: NSObject, ARSessionDelegate {
         var onCameraUpdate: (Float) -> Void
+        // Weak reference to avoid retain cycles.
         weak var arView: ARView?
+        
+        // Define a pitch threshold (15° ≈ 0.26 radians) to ignore frames when the device is tilted too much.
+        private static let pitchThreshold: Float = 0.26
         
         init(onCameraUpdate: @escaping (Float) -> Void) {
             self.onCameraUpdate = onCameraUpdate
@@ -129,12 +208,12 @@ struct ARViewContainer: UIViewRepresentable {
             let camera = frame.camera
             let eulerAngles = camera.eulerAngles
             
-            // eulerAngles.x is the pitch. Only update if the phone is held nearly horizontally.
-            if abs(eulerAngles.x) > pitchThreshold {
-                return  // Ignore frames when the device is tilted up or down too much.
+            // Only update if the device is held nearly horizontally.
+            if abs(eulerAngles.x) > Coordinator.pitchThreshold {
+                return
             }
             
-            // Use the yaw from eulerAngles.y.
+            // Use the yaw (eulerAngles.y) for the scanning.
             let currentYaw = eulerAngles.y
             DispatchQueue.main.async {
                 self.onCameraUpdate(currentYaw)
@@ -149,16 +228,16 @@ struct DonutProgressView: UIViewRepresentable {
     
     let capturedSegments: Set<Int>
     let totalSegments: Int
-
+    
     func makeUIView(context: Context) -> SCNView {
         let scnView = SCNView()
         scnView.backgroundColor = .clear
-
+        
         // Create an empty scene.
         let scene = SCNScene()
         scnView.scene = scene
         
-        // Build and add the doughnut node.
+        // Build and add the donut node.
         let donut = context.coordinator.makeDonutNode(totalSegments: totalSegments)
         scene.rootNode.addChildNode(donut)
         
@@ -169,32 +248,31 @@ struct DonutProgressView: UIViewRepresentable {
         cameraNode.position = SCNVector3(0, 0, 2)
         scene.rootNode.addChildNode(cameraNode)
         
-        // Default lighting.
+        // Enable default lighting.
         scnView.autoenablesDefaultLighting = true
         
         return scnView
     }
-
+    
     func updateUIView(_ scnView: SCNView, context: Context) {
-        // Update each segment’s material based on capture progress.
+        // Update each segment’s material based on the capture progress.
         guard let donut = scnView.scene?.rootNode.childNode(withName: "donut", recursively: false) else { return }
         
         for i in 0..<totalSegments {
             if let segmentNode = donut.childNode(withName: "segment\(i)", recursively: false),
                let material = segmentNode.geometry?.firstMaterial {
-                // Use green if captured, otherwise light gray.
+                // Use green if the segment is captured, otherwise light gray.
                 material.diffuse.contents = capturedSegments.contains(i) ? UIColor.systemGreen : UIColor.lightGray
             }
         }
     }
-
+    
     func makeCoordinator() -> Coordinator {
-        return Coordinator()
+        Coordinator()
     }
-
+    
     class Coordinator: NSObject {
-
-        // Creates the donut node composed of smooth, curved segments.
+        
         func makeDonutNode(totalSegments: Int) -> SCNNode {
             let donutNode = SCNNode()
             donutNode.name = "donut"
@@ -223,7 +301,7 @@ struct DonutProgressView: UIViewRepresentable {
                             clockwise: true)
                 // Draw a line connecting to the outer circle.
                 path.addLine(to: CGPoint(x: outerRadius * cos(endAngle), y: outerRadius * sin(endAngle)))
-                // Draw the outer arc (going in the reverse direction to close the shape).
+                // Draw the outer arc (in reverse) to close the shape.
                 path.addArc(withCenter: .zero,
                             radius: outerRadius,
                             startAngle: endAngle,
@@ -234,21 +312,18 @@ struct DonutProgressView: UIViewRepresentable {
                 
                 // Create a shape from the path with the desired extrusion depth.
                 let shape = SCNShape(path: path, extrusionDepth: extrusionDepth)
-                
-                // Set a small chamfer to further smooth the edges.
-                shape.chamferRadius = 0.005
+                shape.chamferRadius = 0.005  // Smooth the edges.
                 shape.chamferMode = .both
                 
-                // Create a material (light gray by default).
+                // Create a material (default light gray).
                 let material = SCNMaterial()
                 material.diffuse.contents = UIColor.lightGray
                 shape.materials = [material]
                 
-                // Create a node for the segment.
+                // Create the node for this segment.
                 let segmentNode = SCNNode(geometry: shape)
                 segmentNode.name = "segment\(i)"
-                
-                // Rotate the segment so that its flat face is horizontal.
+                // Rotate so that the flat face is horizontal.
                 segmentNode.eulerAngles.x = -Float.pi / 2
                 
                 donutNode.addChildNode(segmentNode)
