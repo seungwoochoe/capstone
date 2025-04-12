@@ -12,7 +12,6 @@ import RealityKit
 // MARK: - RoomScannerView
 
 struct RoomScannerView: View {
-    @State private var capturedCount: Int = 0
     @State private var capturedSegments: Set<Int> = []
     @State private var capturedImages: [UIImage] = []
     @State private var isRoomNamePromptPresented: Bool = false
@@ -84,8 +83,7 @@ struct RoomScannerView: View {
     }
     
     private func captureImage(currentAngle: Float) {
-        guard capturedCount < totalCaptures else { return }
-        capturedCount += 1
+        guard capturedImages.count < totalCaptures else { return }
         
         guard let arView = arView else {
             print("ARView not ready for snapshot. Retrying...")
@@ -99,9 +97,9 @@ struct RoomScannerView: View {
             if let image = image {
                 DispatchQueue.main.async {
                     self.capturedImages.append(image)
-                    print("Captured image \(self.capturedCount) at angle: \(currentAngle)°")
-                    if self.capturedCount == self.totalCaptures {
-                        print("Capture complete with \(self.capturedCount) images.")
+                    print("Captured image \(self.capturedImages.count) at angle: \(currentAngle)°")
+                    if self.capturedImages.count == self.totalCaptures {
+                        print("Capture complete with \(self.capturedImages.count) images.")
                         self.arView?.session.pause()
                         self.isRoomNamePromptPresented = true
                     }
@@ -116,7 +114,6 @@ struct RoomScannerView: View {
     }
     
     private func startSession() {
-        capturedCount = 0
         capturedSegments = []
         capturedImages = []
         roomName = ""
