@@ -46,11 +46,6 @@ struct Room3DViewer: View {
                 }
             }
             .navigationTitle(scannedRoom.roomName)
-            .toolbar {
-                ToolbarItem(placement: .navigationBarLeading) {
-                    Button("Close") { dismiss() }
-                }
-            }
         }
     }
     

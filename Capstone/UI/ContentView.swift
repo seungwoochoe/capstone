@@ -58,22 +58,20 @@ struct ContentView: View {
                     }
                 }
                 
-                VStack(spacing: 0) {
-                    BottomGradientBlur()
-                        .frame(height: 90)
-                        .overlay(
-                            Button {
-                                showScanner = true
-                            } label: {
-                                Image(systemName: "plus")
-                                    .font(.largeTitle)
-                                    .foregroundColor(colorScheme == .light ? .accentColor : .white)
-                                    .frame(width: 64, height: 64)
-                                    .background(Circle().fill(colorScheme == .light ? Color(.systemBackground) : .accentColor))
-                                    .shadow(color: colorScheme == .light ? .secondary.opacity(0.3) : .black.opacity(0.3), radius: 15)
-                            }
-                        )
-                }
+                BottomGradientBlur()
+                    .frame(height: 90)
+                    .overlay(
+                        Button {
+                            showScanner = true
+                        } label: {
+                            Image(systemName: "plus")
+                                .font(.largeTitle)
+                                .foregroundColor(colorScheme == .light ? .accentColor : .white)
+                                .frame(width: 64, height: 64)
+                                .background(Circle().fill(colorScheme == .light ? Color(.systemBackground) : .accentColor))
+                                .shadow(color: colorScheme == .light ? .secondary.opacity(0.3) : .black.opacity(0.3), radius: 15)
+                        }
+                    )
             }
             .searchable(text: $searchText)
             .overlay {
@@ -90,14 +88,14 @@ struct ContentView: View {
                     }
                 }
             }
+            .navigationDestination(item: $selectedRoom) { room in
+                Room3DViewer(scannedRoom: room)
+            }
             .sheet(isPresented: $showScanner) {
                 RoomScannerView()
             }
             .sheet(isPresented: $showAbout) {
                 AboutView()
-            }
-            .sheet(item: $selectedRoom) { room in
-                Room3DViewer(scannedRoom: room)
             }
         }
     }
