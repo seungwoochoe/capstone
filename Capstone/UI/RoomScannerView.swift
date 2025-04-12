@@ -18,10 +18,9 @@ struct RoomScannerView: View {
     
     @State private var capturedSegments: Set<Int> = []
     @State private var capturedImages: [UIImage] = []
+    @State private var tooFast: Bool = false
     @State private var isScanNamePromptPresented: Bool = false
     @State private var scanName: String = ""
-    
-    // Store a reference to the active ARView.
     @State private var arView: ARView? = nil
     
     private let totalCaptures: Int = 60
@@ -30,8 +29,8 @@ struct RoomScannerView: View {
     var body: some View {
         ZStack(alignment: .bottom) {
             ARViewContainer(
-                onCameraUpdate: { currentYaw in
-                    processCameraAngle(currentYaw)
+                onCameraUpdate: { currentYaw, tooFast in
+                    processCameraAngle(currentYaw, tooFast: tooFast)
                 },
                 onARViewCreated: { view in
                     DispatchQueue.main.async {
@@ -60,9 +59,9 @@ struct RoomScannerView: View {
                         .frame(width: 150, height: 150)
                         .padding(.bottom, 40)
                     
-                    Text("Rotate Slowly")
+                    Text(tooFast ? "Too Fast" : "Rotate Slowly")
                         .font(.headline)
-                        .foregroundColor(.white)
+                        .foregroundColor(tooFast ? .red : .white)
                         .shadow(radius: 10)
                 }
             }
@@ -87,12 +86,16 @@ struct RoomScannerView: View {
         return fmod(degrees + 360, 360)
     }
     
-    private func processCameraAngle(_ currentYaw: Float) {
-        let normalizedAngle = normalizedDegrees(from: currentYaw)
+    private func processCameraAngle(_ currentYaw: Float, tooFast: Bool) {
+        // Update the UI to indicate if the device is moving too fast.
+        self.tooFast = tooFast
         
+        // If rotating too fast, do not proceed with capturing.
+        guard !tooFast else { return }
+        
+        let normalizedAngle = normalizedDegrees(from: currentYaw)
         // Compute the scanning angle relative to the donut.
         let scanningAngle = fmod(90 + normalizedAngle + 360, 360)
-        
         // Offset by half the segment angle to center the segment thresholds.
         let adjustedAngle = fmod(scanningAngle + angleThresholdDegrees / 2, 360)
         let segment = Int(adjustedAngle / angleThresholdDegrees)
@@ -150,7 +153,7 @@ struct RoomScannerView: View {
 
 struct ARViewContainer: UIViewRepresentable {
     
-    let onCameraUpdate: (Float) -> Void
+    let onCameraUpdate: (Float, Bool) -> Void
     let onARViewCreated: (ARView) -> Void
     
     func makeUIView(context: Context) -> ARView {
@@ -180,14 +183,17 @@ struct ARViewContainer: UIViewRepresentable {
     }
     
     class Coordinator: NSObject, ARSessionDelegate {
-        var onCameraUpdate: (Float) -> Void
-        // Weak reference to avoid retain cycles.
+        var onCameraUpdate: (Float, Bool) -> Void
         weak var arView: ARView?
         
-        // Define a pitch threshold (15° ≈ 0.26 radians) to ignore frames when the device is tilted too much.
-        private static let pitchThreshold: Float = 0.26
+        private let pitchThreshold: Float = 0.26 // (15° ≈ 0.26 radians)
+        private let angularVelocityThreshold: Float = 30.0
         
-        init(onCameraUpdate: @escaping (Float) -> Void) {
+        // Variables to track the last yaw and timestamp for computing angular velocity.
+        var lastYaw: Float?
+        var lastTimestamp: TimeInterval?
+        
+        init(onCameraUpdate: @escaping (Float, Bool) -> Void) {
             self.onCameraUpdate = onCameraUpdate
         }
         
@@ -196,14 +202,27 @@ struct ARViewContainer: UIViewRepresentable {
             let eulerAngles = camera.eulerAngles
             
             // Only update if the device is held nearly horizontally.
-            if abs(eulerAngles.x) > Coordinator.pitchThreshold {
+            if abs(eulerAngles.x) > pitchThreshold {
                 return
             }
             
-            // Use the yaw (eulerAngles.y) for the scanning.
             let currentYaw = eulerAngles.y
+            let currentTimestamp = frame.timestamp
+            var tooFast = false
+            
+            if let lastYaw = lastYaw, let lastTimestamp = lastTimestamp, currentTimestamp > lastTimestamp {
+                let deltaTime = currentTimestamp - lastTimestamp
+                let deltaYaw = abs(currentYaw - lastYaw)  // in radians
+                let angularVelocityDegrees = (deltaYaw * 180 / .pi) / Float(deltaTime)
+                tooFast = angularVelocityDegrees > angularVelocityThreshold
+            }
+            
+            // Update tracking variables.
+            lastYaw = currentYaw
+            lastTimestamp = currentTimestamp
+            
             DispatchQueue.main.async {
-                self.onCameraUpdate(currentYaw)
+                self.onCameraUpdate(currentYaw, tooFast)
             }
         }
     }
