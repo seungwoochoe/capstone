@@ -19,21 +19,21 @@ protocol ScanDBRepository {
 final actor RealScanDBRepository: ScanDBRepository {
     
     func store(scanDTO: ScanDTO) async throws {
-        let scan = Scan(dto: scanDTO)
+        let scan = DBModel.Scan(dto: scanDTO)
         try modelContext.transaction {
             modelContext.insert(scan)
         }
     }
     
     func fetchAllScans() async throws -> [ScanDTO] {
-        let fetchDescriptor = FetchDescriptor<Scan>()
+        let fetchDescriptor = FetchDescriptor<DBModel.Scan>()
         let scans = try modelContext.fetch(fetchDescriptor)
         return scans.map { $0.toDTO() }
     }
     
     func update(scanDTO: ScanDTO, for scanID: UUID) async throws {
-        let predicate = #Predicate<Scan> { $0.id == scanID }
-        let fetchDescriptor = FetchDescriptor<Scan>(predicate: predicate)
+        let predicate = #Predicate<DBModel.Scan> { $0.id == scanID }
+        let fetchDescriptor = FetchDescriptor<DBModel.Scan>(predicate: predicate)
         guard let scan = try modelContext.fetch(fetchDescriptor).first else {
             // Optionally, throw an error if the scan is not found.
             return
@@ -47,8 +47,8 @@ final actor RealScanDBRepository: ScanDBRepository {
     }
     
     func delete(scanID: UUID) async throws {
-        let predicate = #Predicate<Scan> { $0.id == scanID }
-        let fetchDescriptor = FetchDescriptor<Scan>(predicate: predicate)
+        let predicate = #Predicate<DBModel.Scan> { $0.id == scanID }
+        let fetchDescriptor = FetchDescriptor<DBModel.Scan>(predicate: predicate)
         guard let scan = try modelContext.fetch(fetchDescriptor).first else {
             // Optionally, throw an error if the scan is not found.
             return

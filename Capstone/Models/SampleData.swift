@@ -8,12 +8,13 @@
 import SwiftUI
 import SwiftData
 
-struct ScanSampleData: PreviewModifier {
+struct SampleData: PreviewModifier {
     
     static func makeSharedContext() async throws -> ModelContainer {
         let config = ModelConfiguration(isStoredInMemoryOnly: true)
-        let container = try ModelContainer(for: Scan.self, configurations: config)
-        Scan.makeSampleScans(in: container)
+        let container = try ModelContainer(for: Schema.appSchema, configurations: config)
+        DBModel.Scan.makeSampleScans(in: container)
+        DBModel.UploadTask.makeSampleUploadTasks(in: container)
         return container
     }
     
@@ -23,10 +24,12 @@ struct ScanSampleData: PreviewModifier {
 }
 
 extension PreviewTrait where T == Preview.ViewTraits {
-    @MainActor static var scanSampleData: Self = .modifier(ScanSampleData())
+    @MainActor static var sampleData: Self = .modifier(SampleData())
 }
 
-extension Scan {
+// MARK: - DBModel.Scan
+
+extension DBModel.Scan {
     
     @MainActor static func makeSampleScans(in container: ModelContainer) {
         let context = container.mainContext
@@ -59,8 +62,57 @@ extension Scan {
         ]
         
         sampleDTOs.forEach { dto in
-            let scan = Scan(dto: dto)
+            let scan = DBModel.Scan(dto: dto)
             context.insert(scan)
+        }
+    }
+}
+
+// MARK: - DBModel.UploadTask
+
+extension DBModel.UploadTask {
+    
+    @MainActor static func makeSampleUploadTasks(in container: ModelContainer) {
+        let context = container.mainContext
+        
+        let sampleDTOs: [UploadTaskDTO] = [
+            UploadTaskDTO(
+                id: UUID(),
+                name: "Living Room",
+                imageURLs: [],
+                createdAt: Date(),
+                retryCount: 0,
+                uploadStatus: .failed
+            ),
+            UploadTaskDTO(
+                id: UUID(),
+                name: "Kitchen Room",
+                imageURLs: [],
+                createdAt: Date(),
+                retryCount: 0,
+                uploadStatus: .inProgress
+            ),
+            UploadTaskDTO(
+                id: UUID(),
+                name: "Bedroom",
+                imageURLs: [],
+                createdAt: Date(),
+                retryCount: 0,
+                uploadStatus: .inProgress
+            ),
+            UploadTaskDTO(
+                id: UUID(),
+                name: "Bathroom",
+                imageURLs: [],
+                createdAt: Date(),
+                retryCount: 0,
+                uploadStatus: .pending
+            ),
+        ]
+        
+        sampleDTOs.forEach { dto in
+            let uploadTask = DBModel.UploadTask(dto: dto)
+            context.insert(uploadTask)
         }
     }
 }

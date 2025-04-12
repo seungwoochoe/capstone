@@ -13,16 +13,16 @@ import SwiftData
 struct ContentView: View {
     
     @Environment(\.colorScheme) private var colorScheme
-    @Query(sort: \Scan.processedDate, order: .reverse) var scans: [Scan]
-    @Query(sort: \UploadTask.createdAt, order: .reverse) var uploadTasks: [UploadTask]
+    @Query(sort: \DBModel.Scan.processedDate, order: .reverse) var scans: [DBModel.Scan]
+    @Query(sort: \DBModel.UploadTask.createdAt, order: .reverse) var uploadTasks: [DBModel.UploadTask]
 
     @State private var searchIsPresented: Bool = false
     @State private var searchText: String = ""
     @State private var showScanner: Bool = false
     @State private var showAbout: Bool = false
-    @State private var selected: Scan? = nil
+    @State private var selected: DBModel.Scan? = nil
 
-    var filteredScans: [Scan] {
+    var filteredScans: [DBModel.Scan] {
         if searchText.isEmpty {
             return scans
         } else {
@@ -120,7 +120,7 @@ struct ContentView: View {
 // MARK: - UploadTask Row View
 
 struct UploadTaskRowView: View {
-    let uploadTask: UploadTask
+    let uploadTask: DBModel.UploadTask
     
     var body: some View {
         HStack {
@@ -143,7 +143,7 @@ struct UploadTaskRowView: View {
 // MARK: - Room Row View
 
 struct ScanRowView: View {
-    let scan: Scan
+    let scan: DBModel.Scan
     
     var body: some View {
         HStack {
@@ -180,6 +180,6 @@ struct BottomGradientBlur: View {
 
 // MARK: - Preview
 
-#Preview(traits: .uploadTaskSampleData) {
+#Preview(traits: .sampleData) {
     ContentView()
 }

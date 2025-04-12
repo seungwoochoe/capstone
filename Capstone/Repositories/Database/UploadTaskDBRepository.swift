@@ -19,7 +19,7 @@ protocol UploadTaskDBRepository {
 final actor RealUploadTaskDBRepository: UploadTaskDBRepository {
 
     func store(uploadTaskDTO: UploadTaskDTO) async throws {
-        let task = UploadTask(dto: uploadTaskDTO)
+        let task = DBModel.UploadTask(dto: uploadTaskDTO)
         try modelContext.transaction {
             modelContext.insert(task)
         }
@@ -27,22 +27,22 @@ final actor RealUploadTaskDBRepository: UploadTaskDBRepository {
     
     func fetchPendingUploadTasks() async throws -> [UploadTaskDTO] {
         // Workaround for the issue where #Predicate doesn’t work with enums
-        let pending = UploadTask.Status.pending
-        let failed = UploadTask.Status.failed
+        let pending = DBModel.UploadTask.Status.pending
+        let failed = DBModel.UploadTask.Status.failed
         
-        let predicate = #Predicate<UploadTask> {
+        let predicate = #Predicate<DBModel.UploadTask> {
             $0.uploadStatus == pending ||
             $0.uploadStatus == failed
         }
-        let fetchDescriptor = FetchDescriptor<UploadTask>(predicate: predicate)
+        let fetchDescriptor = FetchDescriptor<DBModel.UploadTask>(predicate: predicate)
         
         let tasks = try modelContext.fetch(fetchDescriptor)
         return tasks.map { $0.toDTO() }
     }
     
     func update(uploadTaskDTO: UploadTaskDTO, for taskID: UUID) async throws {
-        let predicate = #Predicate<UploadTask> { $0.id == taskID }
-        let fetchDescriptor = FetchDescriptor<UploadTask>(predicate: predicate)
+        let predicate = #Predicate<DBModel.UploadTask> { $0.id == taskID }
+        let fetchDescriptor = FetchDescriptor<DBModel.UploadTask>(predicate: predicate)
         guard let task = try modelContext.fetch(fetchDescriptor).first else {
             // Optionally, throw an error if the task is not found.
             return
@@ -58,8 +58,8 @@ final actor RealUploadTaskDBRepository: UploadTaskDBRepository {
     }
     
     func delete(taskID: UUID) async throws {
-        let predicate = #Predicate<UploadTask> { $0.id == taskID }
-        let fetchDescriptor = FetchDescriptor<UploadTask>(predicate: predicate)
+        let predicate = #Predicate<DBModel.UploadTask> { $0.id == taskID }
+        let fetchDescriptor = FetchDescriptor<DBModel.UploadTask>(predicate: predicate)
         guard let task = try modelContext.fetch(fetchDescriptor).first else {
             // Optionally, throw an error if the task is not found.
             return
