@@ -12,6 +12,9 @@ import RealityKit
 // MARK: - RoomScannerView
 
 struct RoomScannerView: View {
+    
+    @Environment(\.dismiss) private var dismiss
+    
     @State private var capturedSegments: Set<Int> = []
     @State private var capturedImages: [UIImage] = []
     @State private var isScanNamePromptPresented: Bool = false
@@ -36,7 +39,20 @@ struct RoomScannerView: View {
                 }
             )
             .ignoresSafeArea()
-            
+            .overlay(alignment: .topLeading) {
+                if !isScanNamePromptPresented && scanName.isEmpty {
+                    Button {
+                        dismiss()
+                    } label: {
+                        Text("Cancel")
+                            .fontWeight(.medium)
+                            .foregroundColor(.white)
+                            .padding()
+                            .background(Capsule().fill(.gray.opacity(0.5)).frame(height: 40))
+                    }
+                    .padding()
+                }
+            }
             if !isScanNamePromptPresented && scanName.isEmpty {
                 VStack {
                     DonutProgressView(capturedSegments: capturedSegments, totalSegments: totalCaptures)
