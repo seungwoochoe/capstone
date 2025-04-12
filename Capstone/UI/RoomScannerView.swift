@@ -58,6 +58,7 @@ struct RoomScannerView: View {
                 print("Room name: \(roomName)")
                 // Add any additional processing logic (e.g., upload/processing) here.
             }
+            .disabled(roomName.isEmpty)
         }
     }
     
