@@ -38,7 +38,7 @@ struct RoomScannerView: View {
             )
             .ignoresSafeArea()
             
-            if !isRoomNamePromptPresented || roomName.isEmpty {
+            if !isRoomNamePromptPresented && roomName.isEmpty {
                 VStack {
                     DonutProgressView(capturedSegments: capturedSegments, totalSegments: totalCaptures)
                         .frame(width: 150, height: 150)
@@ -53,15 +53,11 @@ struct RoomScannerView: View {
         }
         .onAppear { startSession() }
         .onDisappear { stopSession() }
-        // Overlay a custom prompt when all captures are complete.
-        .overlay {
-            if isRoomNamePromptPresented {
-                RoomNamePrompt(roomName: $roomName) { name in
-                    // When the user taps OK, print the room name.
-                    print("Room name: \(name)")
-                    // Continue with upload/processing logic, then dismiss the prompt.
-                    isRoomNamePromptPresented = false
-                }
+        .alert("Name Your Scan", isPresented: $isRoomNamePromptPresented) {
+            TextField("Enter room name", text: $roomName)
+            Button("OK") {
+                print("Room name: \(roomName)")
+                // Add any additional processing logic (e.g., upload/processing) here.
             }
         }
     }
@@ -106,7 +102,6 @@ struct RoomScannerView: View {
                     print("Captured image \(self.capturedCount) at angle: \(currentAngle)°")
                     if self.capturedCount == self.totalCaptures {
                         print("Capture complete with \(self.capturedCount) images.")
-                        // Pause the AR session to stop the delegate from holding ARFrames.
                         self.arView?.session.pause()
                         self.isRoomNamePromptPresented = true
                     }
@@ -129,38 +124,7 @@ struct RoomScannerView: View {
     }
     
     private func stopSession() {
-        // Implement any needed AR session cleanup.
-    }
-}
-
-// MARK: - Room Name Prompt
-
-struct RoomNamePrompt: View {
-    @FocusState private var isTextFieldFocused: Bool
-    @Binding var roomName: String
-
-    var onComplete: (String) -> Void
-    
-    var body: some View {
-        VStack(spacing: 20) {
-            Text("Name Your Scan")
-                .font(.headline)
-            TextField("Enter room name", text: $roomName)
-                .focused($isTextFieldFocused)
-                .textFieldStyle(RoundedBorderTextFieldStyle())
-                .padding(.horizontal)
-            Button("OK") {
-                onComplete(roomName)
-            }
-            .buttonStyle(.borderedProminent)
-        }
-        .padding()
-        .background(.ultraThinMaterial)
-        .cornerRadius(12)
-        .padding()
-        .onAppear {
-            isTextFieldFocused = true
-        }
+        // Implement any needed AR session cleanup here.
     }
 }
 
@@ -168,9 +132,7 @@ struct RoomNamePrompt: View {
 
 struct ARViewContainer: UIViewRepresentable {
     
-    // Closure that passes current yaw (in radians) updates back to RoomScannerView.
     let onCameraUpdate: (Float) -> Void
-    // New closure to pass the created ARView back.
     let onARViewCreated: (ARView) -> Void
     
     func makeUIView(context: Context) -> ARView {
