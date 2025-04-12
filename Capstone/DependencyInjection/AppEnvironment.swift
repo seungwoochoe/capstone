@@ -95,7 +95,7 @@ extension AppEnvironment {
     }
     
     private static func configuredDBRepositories(modelContainer: ModelContainer) -> DIContainer.DBRepositories {
-        let scanUploadTask: ScanUploadTaskDBRepository = RealScanUploadTaskDBRepository(modelContainer: modelContainer)
+        let scanUploadTask: UploadTaskDBRepository = RealUploadTaskDBRepository(modelContainer: modelContainer)
         let scan: ScanDBRepository = RealScanDBRepository(modelContainer: modelContainer)
         return .init(scanUploadTaskDBRepository: scanUploadTask,
                      scanDBRepository: scan)

@@ -32,7 +32,7 @@ extension DIContainer {
 
     // MARK: - Database Repositories
     struct DBRepositories {
-        let scanUploadTaskDBRepository: ScanUploadTaskDBRepository
+        let scanUploadTaskDBRepository: UploadTaskDBRepository
         let scanDBRepository: ScanDBRepository
     }
 

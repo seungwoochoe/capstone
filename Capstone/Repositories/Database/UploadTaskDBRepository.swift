@@ -1,5 +1,5 @@
 //
-//  ScanUploadTaskDBRepository.swift
+//  UploadTaskDBRepository.swift
 //  Capstone
 //
 //  Created by Seungwoo Choe on 2025-04-11.
@@ -8,7 +8,7 @@
 import SwiftData
 import Foundation
 
-protocol ScanUploadTaskDBRepository {
+protocol UploadTaskDBRepository {
     func store(uploadTaskDTO: UploadTaskDTO) async throws
     func fetchPendingUploadTasks() async throws -> [UploadTaskDTO]
     func update(uploadTaskDTO: UploadTaskDTO, for taskID: UUID) async throws
@@ -16,7 +16,7 @@ protocol ScanUploadTaskDBRepository {
 }
 
 @ModelActor
-final actor RealScanUploadTaskDBRepository: ScanUploadTaskDBRepository {
+final actor RealUploadTaskDBRepository: UploadTaskDBRepository {
 
     func store(uploadTaskDTO: UploadTaskDTO) async throws {
         let task = UploadTask(dto: uploadTaskDTO)
