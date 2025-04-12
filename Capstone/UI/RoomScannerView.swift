@@ -38,15 +38,17 @@ struct RoomScannerView: View {
             )
             .ignoresSafeArea()
             
-            VStack {
-                DonutProgressView(capturedSegments: capturedSegments, totalSegments: totalCaptures)
-                    .frame(width: 150, height: 150)
-                    .padding(.bottom, 40)
-                
-                Text("Rotate Slowly")
-                    .font(.headline)
-                    .foregroundColor(.white)
-                    .shadow(radius: 10)
+            if !isRoomNamePromptPresented || roomName.isEmpty {
+                VStack {
+                    DonutProgressView(capturedSegments: capturedSegments, totalSegments: totalCaptures)
+                        .frame(width: 150, height: 150)
+                        .padding(.bottom, 40)
+                    
+                    Text("Rotate Slowly")
+                        .font(.headline)
+                        .foregroundColor(.white)
+                        .shadow(radius: 10)
+                }
             }
         }
         .onAppear { startSession() }
@@ -119,7 +121,6 @@ struct RoomScannerView: View {
     }
     
     private func startSession() {
-        // Is this needed?
         capturedCount = 0
         capturedSegments = []
         capturedImages = []
@@ -135,7 +136,9 @@ struct RoomScannerView: View {
 // MARK: - Room Name Prompt
 
 struct RoomNamePrompt: View {
+    @FocusState private var isTextFieldFocused: Bool
     @Binding var roomName: String
+
     var onComplete: (String) -> Void
     
     var body: some View {
@@ -143,6 +146,7 @@ struct RoomNamePrompt: View {
             Text("Name Your Scan")
                 .font(.headline)
             TextField("Enter room name", text: $roomName)
+                .focused($isTextFieldFocused)
                 .textFieldStyle(RoundedBorderTextFieldStyle())
                 .padding(.horizontal)
             Button("OK") {
@@ -154,6 +158,9 @@ struct RoomNamePrompt: View {
         .background(.ultraThinMaterial)
         .cornerRadius(12)
         .padding()
+        .onAppear {
+            isTextFieldFocused = true
+        }
     }
 }
 
