@@ -20,14 +20,14 @@ extension DBModel {
             case succeeded
         }
         
-        var id: UUID
+        @Attribute(.unique) var id: UUID
         var name: String
         var imageURLs: [URL]
         var createdAt: Date
         var retryCount: Int
         var uploadStatus: Status
         
-        init(id: UUID = UUID(),
+        init(id: UUID,
              name: String,
              imageURLs: [URL],
              createdAt: Date = Date(),

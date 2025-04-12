@@ -16,14 +16,15 @@ struct ScanDTO: Sendable {
 }
 
 extension DBModel {
+    
     @Model
     final class Scan {
-        var id: UUID
+        @Attribute(.unique) var id: UUID
         var name: String
         var usdzURL: URL
         var processedDate: Date
         
-        init(id: UUID = UUID(),
+        init(id: UUID,
              name: String,
              usdzURL: URL,
              processedDate: Date = Date()) {
