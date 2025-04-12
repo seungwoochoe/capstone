@@ -28,12 +28,12 @@ struct RoomScannerView: View {
             VStack {
                 DonutProgressView(capturedSegments: capturedSegments, totalSegments: totalCaptures)
                     .frame(width: 150, height: 150)
-                    .padding(.bottom, 50)
+                    .padding(.bottom, 40)
                 
                 Text("Rotate Slowly")
                     .font(.headline)
                     .foregroundColor(.white)
-                    .shadow(radius: 2)
+                    .shadow(radius: 10)
             }
         }
         .onAppear { startSession() }
