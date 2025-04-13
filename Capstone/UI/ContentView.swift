@@ -61,19 +61,31 @@ struct ContentView: View {
                     }
                     else {
                         List {
-                            ForEach(filteredUploadTasks, id: \.id) { uploadTask in
-                                UploadTaskRowView(uploadTask: uploadTask)
-                            }
-                            .onDelete(perform: deleteUploadTasks)
-                            
-                            ForEach(filteredScans, id: \.id) { scan in
-                                Button {
-                                    selected = scan
-                                } label: {
-                                    ScanRowView(scan: scan)
+                            Section {
+                                ForEach(filteredUploadTasks, id: \.id) { uploadTask in
+                                    UploadTaskRowView(uploadTask: uploadTask)
+                                }
+                                .onDelete(perform: deleteUploadTasks)
+                            } header: {
+                                if !filteredUploadTasks.isEmpty {
+                                    Text("Pending")
                                 }
                             }
-                            .onDelete(perform: deleteScan)
+                            
+                            Section {
+                                ForEach(filteredScans, id: \.id) { scan in
+                                    Button {
+                                        selected = scan
+                                    } label: {
+                                        ScanRowView(scan: scan)
+                                    }
+                                }
+                                .onDelete(perform: deleteScan)
+                            } header: {
+                                if !filteredScans.isEmpty {
+                                    Text("Completed")
+                                }
+                            }
                         }
                     }
                 }
