@@ -44,6 +44,12 @@ extension Result {
     }
 }
 
+enum SCApp {
+    static let name = Bundle.main.object(forInfoDictionaryKey: kCFBundleNameKey as String) as! String
+    static let licence = Bundle.main.object(forInfoDictionaryKey: "NSHumanReadableCopyright") as! String
+    static let version = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as! String
+}
+
 // MARK: - View Inspection helper
 
 internal final class Inspection<V> {

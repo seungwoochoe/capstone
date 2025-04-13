@@ -18,7 +18,7 @@
 		23CF12BE2D99557B00B88F84 /* Exceptions for "Capstone" folder in "Capstone" target */ = {
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
-				Info.plist,
+				Resources/Info.plist,
 			);
 			target = 23CF126C2D99531900B88F84 /* Capstone */;
 		};
@@ -277,7 +277,7 @@
 				DEVELOPMENT_TEAM = PN58M5JSA7;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_FILE = Capstone/Info.plist;
+				INFOPLIST_FILE = Capstone/Resources/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = "3D Room Scanner";
 				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.utilities";
@@ -317,7 +317,7 @@
 				DEVELOPMENT_TEAM = PN58M5JSA7;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_FILE = Capstone/Info.plist;
+				INFOPLIST_FILE = Capstone/Resources/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = "3D Room Scanner";
 				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.utilities";
