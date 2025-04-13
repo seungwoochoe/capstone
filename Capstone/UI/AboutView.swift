@@ -18,6 +18,7 @@ struct AboutView: View {
                 VStack(spacing: 30) {
                     Image(systemName: "app.fill")
                         .resizable()
+                        .foregroundStyle(.gray)
                         .frame(width: 100, height: 100)
                         .cornerRadius(20)
                     
@@ -25,7 +26,7 @@ struct AboutView: View {
                         .font(.title)
                         .fontWeight(.bold)
                     
-                    Text(SCApp.version)
+                    Text("Version \(SCApp.version)")
                         .font(.subheadline)
                         .foregroundColor(.secondary)
                     
