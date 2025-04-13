@@ -17,6 +17,7 @@ struct RoomScannerView: View {
     @Environment(\.dismiss) private var dismiss
     
     @State private var capturedSegments: Set<Int> = []
+    @State private var currentSegment: Int? = nil
     @State private var capturedImages: [UIImage] = []
     @State private var tooFast: Bool = false
     @State private var isDeviceHorizontal: Bool = true
@@ -56,7 +57,9 @@ struct RoomScannerView: View {
             }
             if !isScanNamePromptPresented && scanName.isEmpty {
                 VStack {
-                    DonutProgressView(capturedSegments: capturedSegments, totalSegments: totalCaptures)
+                    DonutProgressView(capturedSegments: capturedSegments,
+                                      totalSegments: totalCaptures,
+                                      currentSegment: currentSegment)
                         .frame(width: 150, height: 150)
                         .padding(.bottom, 40)
                     
@@ -117,15 +120,15 @@ struct RoomScannerView: View {
             self.tooFast = tooFast
         }
         
-        // If rotating too fast, do not proceed with capturing.
-        guard !tooFast else { return }
-        
         let normalizedAngle = normalizedDegrees(from: currentYaw)
         // Compute the scanning angle relative to the donut.
         let scanningAngle = fmod(90 + normalizedAngle + 360, 360)
         // Offset by half the segment angle to center the segment thresholds.
         let adjustedAngle = fmod(scanningAngle + angleThresholdDegrees / 2, 360)
         let segment = Int(adjustedAngle / angleThresholdDegrees)
+        self.currentSegment = segment
+        
+        guard !tooFast else { return }
         
         if !capturedSegments.contains(segment) {
             capturedSegments.insert(segment)
@@ -243,7 +246,6 @@ struct ARViewContainer: UIViewRepresentable {
                 lastTimestamp = frame.timestamp
             }
             
-            // Always call the update closure with the latest yaw, tooFast, and orientation validity.
             DispatchQueue.main.async {
                 self.onCameraUpdate(eulerAngles.y, tooFast, isDeviceHorizontal)
             }
@@ -257,12 +259,12 @@ struct DonutProgressView: UIViewRepresentable {
     
     let capturedSegments: Set<Int>
     let totalSegments: Int
-    
+    let currentSegment: Int?
+
     func makeUIView(context: Context) -> SCNView {
         let scnView = SCNView()
         scnView.backgroundColor = .clear
         
-        // Create an empty scene.
         let scene = SCNScene()
         scnView.scene = scene
         
@@ -273,25 +275,33 @@ struct DonutProgressView: UIViewRepresentable {
         // Set up a simple camera.
         let cameraNode = SCNNode()
         cameraNode.camera = SCNCamera()
-        // Position the camera so it looks at the donut.
         cameraNode.position = SCNVector3(0, 0, 2)
         scene.rootNode.addChildNode(cameraNode)
         
-        // Enable default lighting.
         scnView.autoenablesDefaultLighting = true
         
         return scnView
     }
     
     func updateUIView(_ scnView: SCNView, context: Context) {
-        // Update each segment’s material based on the capture progress.
         guard let donut = scnView.scene?.rootNode.childNode(withName: "donut", recursively: false) else { return }
         
         for i in 0..<totalSegments {
             if let segmentNode = donut.childNode(withName: "segment\(i)", recursively: false),
                let material = segmentNode.geometry?.firstMaterial {
-                // Use green if the segment is captured, otherwise light gray.
-                material.diffuse.contents = capturedSegments.contains(i) ? UIColor.systemGreen : UIColor.lightGray
+                
+                // Determine the base color based on whether the segment is captured.
+                let baseColor = capturedSegments.contains(i) ? UIColor.systemGreen : UIColor.lightGray
+                
+                // If this segment is currently being scanned, override it with a brighter highlight.
+                if let current = currentSegment, current == i {
+                    let highlightColor = capturedSegments.contains(i) ?
+                        UIColor(red: 0.0, green: 1.0, blue: 0.0, alpha: 1.0) :
+                        UIColor(white: 0.8, alpha: 1.0)
+                    material.diffuse.contents = highlightColor
+                } else {
+                    material.diffuse.contents = baseColor
+                }
             }
         }
     }
@@ -308,7 +318,6 @@ struct DonutProgressView: UIViewRepresentable {
             // Tilt the whole donut.
             donutNode.eulerAngles.x = +Float.pi / 6
             
-            // Define radii and extrusion depth.
             let innerRadius: CGFloat = 0.5
             let outerRadius: CGFloat = 0.8
             let extrusionDepth: CGFloat = 0.05
@@ -318,41 +327,31 @@ struct DonutProgressView: UIViewRepresentable {
                 let startAngle = anglePerSegment * CGFloat(i)
                 let endAngle = startAngle + anglePerSegment
                 
-                // Create a path for the donut segment.
                 let path = UIBezierPath()
-                // Start at the inner circle at the start angle.
                 path.move(to: CGPoint(x: innerRadius * cos(startAngle), y: innerRadius * sin(startAngle)))
-                // Draw the inner arc.
                 path.addArc(withCenter: .zero,
                             radius: innerRadius,
                             startAngle: startAngle,
                             endAngle: endAngle,
                             clockwise: true)
-                // Draw a line connecting to the outer circle.
                 path.addLine(to: CGPoint(x: outerRadius * cos(endAngle), y: outerRadius * sin(endAngle)))
-                // Draw the outer arc (in reverse) to close the shape.
                 path.addArc(withCenter: .zero,
                             radius: outerRadius,
                             startAngle: endAngle,
                             endAngle: startAngle,
                             clockwise: false)
-                // Close the path.
                 path.close()
                 
-                // Create a shape from the path with the desired extrusion depth.
                 let shape = SCNShape(path: path, extrusionDepth: extrusionDepth)
-                shape.chamferRadius = 0.005  // Smooth the edges.
+                shape.chamferRadius = 0.005
                 shape.chamferMode = .both
                 
-                // Create a material (default light gray).
                 let material = SCNMaterial()
                 material.diffuse.contents = UIColor.lightGray
                 shape.materials = [material]
                 
-                // Create the node for this segment.
                 let segmentNode = SCNNode(geometry: shape)
                 segmentNode.name = "segment\(i)"
-                // Rotate so that the flat face is horizontal.
                 segmentNode.eulerAngles.x = -Float.pi / 2
                 
                 donutNode.addChildNode(segmentNode)
