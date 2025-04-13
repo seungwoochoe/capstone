@@ -59,10 +59,20 @@ struct RoomScannerView: View {
                         .frame(width: 150, height: 150)
                         .padding(.bottom, 40)
                     
-                    Text(tooFast ? "Too Fast" : "Rotate Slowly")
-                        .font(.headline)
-                        .foregroundColor(tooFast ? .red : .white)
-                        .shadow(radius: 10)
+                    ZStack {
+                        Text("Too Fast")
+                            .font(.headline)
+                            .fontWeight(.bold)
+                            .foregroundColor(.red)
+                            .shadow(radius: 10)
+                            .opacity(tooFast ? 1 : 0)
+                        
+                        Text("Rotate Slowly")
+                            .font(.headline)
+                            .foregroundColor(.white)
+                            .shadow(radius: 10)
+                            .opacity(tooFast ? 0 : 1)
+                    }
                 }
             }
         }
@@ -87,8 +97,14 @@ struct RoomScannerView: View {
     }
     
     private func processCameraAngle(_ currentYaw: Float, tooFast: Bool) {
-        // Update the UI to indicate if the device is moving too fast.
-        self.tooFast = tooFast
+        if self.tooFast && !tooFast {
+            withAnimation(.linear(duration: 1.5).delay(1.5)) {
+                self.tooFast = tooFast
+            }
+        }
+        else {
+            self.tooFast = tooFast
+        }
         
         // If rotating too fast, do not proceed with capturing.
         guard !tooFast else { return }
