@@ -19,6 +19,7 @@ struct RoomScannerView: View {
     @State private var capturedSegments: Set<Int> = []
     @State private var capturedImages: [UIImage] = []
     @State private var tooFast: Bool = false
+    @State private var isDeviceHorizontal: Bool = true
     @State private var isScanNamePromptPresented: Bool = false
     @State private var scanName: String = ""
     @State private var arView: ARView? = nil
@@ -29,8 +30,8 @@ struct RoomScannerView: View {
     var body: some View {
         ZStack(alignment: .bottom) {
             ARViewContainer(
-                onCameraUpdate: { currentYaw, tooFast in
-                    processCameraAngle(currentYaw, tooFast: tooFast)
+                onCameraUpdate: { currentYaw, tooFast, isDeviceHorizontal in
+                    processCameraAngle(currentYaw, tooFast: tooFast, isDeviceHorizontal: isDeviceHorizontal)
                 },
                 onARViewCreated: { view in
                     DispatchQueue.main.async {
@@ -59,19 +60,26 @@ struct RoomScannerView: View {
                         .frame(width: 150, height: 150)
                         .padding(.bottom, 40)
                     
-                    ZStack {
-                        Text("Too Fast")
+                    if !isDeviceHorizontal {
+                        Text("Hold Device Horizontally")
                             .font(.headline)
-                            .fontWeight(.bold)
-                            .foregroundColor(.red)
+                            .foregroundColor(.yellow)
                             .shadow(radius: 10)
-                            .opacity(tooFast ? 1 : 0)
-                        
-                        Text("Rotate Slowly")
-                            .font(.headline)
-                            .foregroundColor(.white)
-                            .shadow(radius: 10)
-                            .opacity(tooFast ? 0 : 1)
+                    } else {
+                        ZStack {
+                            Text("Too Fast")
+                                .font(.headline)
+                                .fontWeight(.bold)
+                                .foregroundColor(.yellow)
+                                .shadow(radius: 10)
+                                .opacity(tooFast ? 1 : 0)
+                            
+                            Text("Rotate Slowly")
+                                .font(.headline)
+                                .foregroundColor(.white)
+                                .shadow(radius: 10)
+                                .opacity(tooFast ? 0 : 1)
+                        }
                     }
                 }
             }
@@ -96,13 +104,16 @@ struct RoomScannerView: View {
         return fmod(degrees + 360, 360)
     }
     
-    private func processCameraAngle(_ currentYaw: Float, tooFast: Bool) {
+    private func processCameraAngle(_ currentYaw: Float, tooFast: Bool, isDeviceHorizontal: Bool) {
+        self.isDeviceHorizontal = isDeviceHorizontal
+        // Only process capturing if the device is held horizontally.
+        guard isDeviceHorizontal else { return }
+        
         if self.tooFast && !tooFast {
             withAnimation(.linear(duration: 1.5).delay(1.5)) {
                 self.tooFast = tooFast
             }
-        }
-        else {
+        } else {
             self.tooFast = tooFast
         }
         
@@ -169,7 +180,7 @@ struct RoomScannerView: View {
 
 struct ARViewContainer: UIViewRepresentable {
     
-    let onCameraUpdate: (Float, Bool) -> Void
+    let onCameraUpdate: (Float, Bool, Bool) -> Void
     let onARViewCreated: (ARView) -> Void
     
     func makeUIView(context: Context) -> ARView {
@@ -199,7 +210,7 @@ struct ARViewContainer: UIViewRepresentable {
     }
     
     class Coordinator: NSObject, ARSessionDelegate {
-        var onCameraUpdate: (Float, Bool) -> Void
+        var onCameraUpdate: (Float, Bool, Bool) -> Void
         weak var arView: ARView?
         
         private let pitchThreshold: Float = 0.26 // (15° ≈ 0.26 radians)
@@ -209,7 +220,7 @@ struct ARViewContainer: UIViewRepresentable {
         var lastYaw: Float?
         var lastTimestamp: TimeInterval?
         
-        init(onCameraUpdate: @escaping (Float, Bool) -> Void) {
+        init(onCameraUpdate: @escaping (Float, Bool, Bool) -> Void) {
             self.onCameraUpdate = onCameraUpdate
         }
         
@@ -217,28 +228,24 @@ struct ARViewContainer: UIViewRepresentable {
             let camera = frame.camera
             let eulerAngles = camera.eulerAngles
             
-            // Only update if the device is held nearly horizontally.
-            if abs(eulerAngles.x) > pitchThreshold {
-                return
-            }
+            // Determine if the device is held horizontally (i.e. pitch near 0).
+            let isDeviceHorizontal = abs(eulerAngles.x) <= pitchThreshold
             
-            let currentYaw = eulerAngles.y
-            let currentTimestamp = frame.timestamp
             var tooFast = false
-            
-            if let lastYaw = lastYaw, let lastTimestamp = lastTimestamp, currentTimestamp > lastTimestamp {
-                let deltaTime = currentTimestamp - lastTimestamp
-                let deltaYaw = abs(currentYaw - lastYaw)  // in radians
-                let angularVelocityDegrees = (deltaYaw * 180 / .pi) / Float(deltaTime)
-                tooFast = angularVelocityDegrees > angularVelocityThreshold
+            if isDeviceHorizontal {
+                if let lastYaw = lastYaw, let lastTimestamp = lastTimestamp, frame.timestamp > lastTimestamp {
+                    let deltaTime = frame.timestamp - lastTimestamp
+                    let deltaYaw = abs(eulerAngles.y - lastYaw)
+                    let angularVelocityDegrees = (deltaYaw * 180 / .pi) / Float(deltaTime)
+                    tooFast = angularVelocityDegrees > angularVelocityThreshold
+                }
+                lastYaw = eulerAngles.y
+                lastTimestamp = frame.timestamp
             }
             
-            // Update tracking variables.
-            lastYaw = currentYaw
-            lastTimestamp = currentTimestamp
-            
+            // Always call the update closure with the latest yaw, tooFast, and orientation validity.
             DispatchQueue.main.async {
-                self.onCameraUpdate(currentYaw, tooFast)
+                self.onCameraUpdate(eulerAngles.y, tooFast, isDeviceHorizontal)
             }
         }
     }
