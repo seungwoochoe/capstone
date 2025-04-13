@@ -50,7 +50,7 @@ struct ContentView: View {
                     if !searchIsPresented && filteredUploadTasks.isEmpty && filteredScans.isEmpty {
                         ScrollView {
                             ContentUnavailableView {
-                                Text("Start Scanning")
+                                Label("Start Scanning", systemImage: "camera")
                                     .fontWeight(.semibold)
                             } description: {
                                 Text("Tap the plus button to get started.")
