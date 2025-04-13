@@ -90,6 +90,7 @@ struct ContentView: View {
                     }
                 }
                 .navigationTitle("3D Room Scanner")
+                .navigationBarTitleDisplayMode(.automatic)
                 .toolbar {
                     ToolbarItem(placement: .navigationBarTrailing) {
                         HStack(spacing: 16) {
