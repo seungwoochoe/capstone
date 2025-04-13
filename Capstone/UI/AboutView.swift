@@ -88,13 +88,24 @@ struct AcknowledgementsView: View {
                                 .bold()
                                 .padding(.bottom)
                             
-                            Text(item.content)
+                            Text(item.content.normalizedLicenseString())
+                                .padding(.bottom)
                         }
                     }
-                    .padding(13)
+                    .padding()
                 }
             }
         }
+    }
+}
+
+extension String {
+    fileprivate func normalizedLicenseString() -> String {
+        let paragraphs = self.components(separatedBy: "\n\n")
+        let cleanedParagraphs = paragraphs.map { paragraph in
+            paragraph.components(separatedBy: "\n").joined(separator: " ").trimmingCharacters(in: .whitespaces)
+        }
+        return cleanedParagraphs.joined(separator: "\n\n")
     }
 }
 
