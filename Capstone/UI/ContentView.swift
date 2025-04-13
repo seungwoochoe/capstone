@@ -126,7 +126,7 @@ struct ContentView: View {
             }
             .searchable(text: $searchText, isPresented: $searchIsPresented)
             .overlay {
-                if searchIsPresented && uploadTasks.isEmpty && filteredScans.isEmpty {
+                if searchIsPresented && filteredUploadTasks.isEmpty && filteredScans.isEmpty {
                     ContentUnavailableView.search(text: searchText)
                 }
             }
