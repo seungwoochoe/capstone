@@ -137,7 +137,7 @@ extension RealScanInteractor {
     private func saveImagesToDisk(images: [UIImage], in folderURL: URL) throws -> [URL] {
         var urls: [URL] = []
         for (idx, image) in images.enumerated() {
-            guard let imageData = image.jpegData(compressionQuality: 0.8) else { continue }
+            guard let imageData = image.jpegData(compressionQuality: 0.3) else { continue }
             let fileURL = folderURL.appendingPathComponent("\(idx + 1).jpg")
             try imageData.write(to: fileURL)
             urls.append(fileURL)
