@@ -14,6 +14,7 @@ protocol ScanInteractor {
     func upload(uploadTaskDTO: UploadTaskDTO) async throws
     func delete(uploadTask: DBModel.UploadTask) async throws
     func delete(scan: DBModel.Scan) async throws
+    func deleteAll() async throws
 }
 
 // MARK: - Actual Implementation
@@ -103,6 +104,19 @@ struct RealScanInteractor: ScanInteractor {
     func delete(scan: DBModel.Scan) async throws {
         try await scanPersistenceRepository.delete(scanID: scan.id)
     }
+    
+    func deleteAll() async throws {
+        let uploadTasks = try await uploadTaskPersistenceRepository.fetchPendingUploadTasks()
+        let scans = try await scanPersistenceRepository.fetchAllScans()
+        
+        for uploadTask in uploadTasks {
+            try await delete(uploadTask: DBModel.UploadTask(dto: uploadTask))
+        }
+        
+        for scan in scans {
+            try await delete(scan: DBModel.Scan(dto: scan))
+        }
+    }
 }
 
 extension RealScanInteractor {
@@ -150,6 +164,7 @@ extension RealScanInteractor {
 // MARK: - Stub
 
 struct StubScanInteractor: ScanInteractor {
+    
     func storeUploadTask(scanName: String, images: [UIImage]) async throws -> UploadTaskDTO {
         return .sample
     }
@@ -163,6 +178,10 @@ struct StubScanInteractor: ScanInteractor {
     }
     
     func delete(scan: DBModel.Scan) async throws {
+        
+    }
+    
+    func deleteAll() async throws {
         
     }
 }
