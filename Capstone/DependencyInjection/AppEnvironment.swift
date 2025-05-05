@@ -7,6 +7,7 @@
 
 import SwiftUI
 import SwiftData
+import OSLog
 
 @MainActor
 struct AppEnvironment {
@@ -82,8 +83,9 @@ extension AppEnvironment {
         do {
             return try ModelContainer.appModelContainer()
         } catch {
-            // Log the error
-            return ModelContainer.stub
+            let logger = Logger(subsystem: Bundle.main.bundleIdentifier!, category: "AppEnvironment")
+            logger.debug("Failed to initialize the ModelContainer: \(error)")
+            return ModelContainer.inMemory
         }
     }
     

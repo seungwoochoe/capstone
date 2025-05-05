@@ -9,53 +9,43 @@ import Foundation
 import SwiftData
 
 protocol ScanDBRepository {
-    func store(scanDTO: ScanDTO) async throws
-    func fetchAllScans() async throws -> [ScanDTO]
-    func update(scanDTO: ScanDTO, for scanID: UUID) async throws
-    func delete(scanID: UUID) async throws
+    func fetchScans() async throws -> [Scan]
+    func store(_ scan: Scan) async throws
+    func update(_ scan: Scan) async throws
+    func delete(_ scan: Scan) async throws
 }
 
 @ModelActor
 final actor RealScanDBRepository: ScanDBRepository {
     
-    func store(scanDTO: ScanDTO) async throws {
-        let scan = DBModel.Scan(dto: scanDTO)
+    func fetchScans() async throws -> [Scan] {
+        let fetchDescriptor = FetchDescriptor<Persistence.Scan>()
+        let scans = try modelContext.fetch(fetchDescriptor)
+        return scans.map { $0.toDomain() }
+    }
+    
+    func store(_ scan: Scan) async throws {
+        let scan = Persistence.Scan(scan: scan)
         try modelContext.transaction {
             modelContext.insert(scan)
         }
     }
     
-    func fetchAllScans() async throws -> [ScanDTO] {
-        let fetchDescriptor = FetchDescriptor<DBModel.Scan>()
-        let scans = try modelContext.fetch(fetchDescriptor)
-        return scans.map { $0.toDTO() }
-    }
-    
-    func update(scanDTO: ScanDTO, for scanID: UUID) async throws {
-        let predicate = #Predicate<DBModel.Scan> { $0.id == scanID }
-        let fetchDescriptor = FetchDescriptor<DBModel.Scan>(predicate: predicate)
-        guard let scan = try modelContext.fetch(fetchDescriptor).first else {
-            // Optionally, throw an error if the scan is not found.
-            return
-        }
+    func update(_ scan: Scan) async throws {
+        guard let existing: Persistence.Scan = try modelContext.existingModel(for: scan.id) else { return }
         
         try modelContext.transaction {
-            scan.name = scanDTO.name
-            scan.usdzURL = scanDTO.usdzURL
-            scan.processedDate = scanDTO.processedDate
+            existing.name = scan.name
+            existing.usdzURL = scan.usdzURL
+            existing.processedDate = scan.processedDate
         }
     }
     
-    func delete(scanID: UUID) async throws {
-        let predicate = #Predicate<DBModel.Scan> { $0.id == scanID }
-        let fetchDescriptor = FetchDescriptor<DBModel.Scan>(predicate: predicate)
-        guard let scan = try modelContext.fetch(fetchDescriptor).first else {
-            // Optionally, throw an error if the scan is not found.
-            return
-        }
+    func delete(_ scan: Scan) async throws {
+        guard let existing: Persistence.Scan = try modelContext.existingModel(for: scan.id) else { return }
         
         try modelContext.transaction {
-            modelContext.delete(scan)
+            modelContext.delete(existing)
         }
     }
 }

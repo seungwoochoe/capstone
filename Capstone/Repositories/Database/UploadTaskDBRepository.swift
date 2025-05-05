@@ -9,64 +9,43 @@ import SwiftData
 import Foundation
 
 protocol UploadTaskDBRepository {
-    func store(uploadTaskDTO: UploadTaskDTO) async throws
-    func fetchPendingUploadTasks() async throws -> [UploadTaskDTO]
-    func update(uploadTaskDTO: UploadTaskDTO, for taskID: UUID) async throws
-    func delete(uploadTaskID: UUID) async throws
+    func fetchUploadTasks() async throws -> [UploadTask]
+    func store(_ uploadTask: UploadTask) async throws
+    func update(_ uploadTask: UploadTask) async throws
+    func delete(_ uploadTask: UploadTask) async throws
 }
 
 @ModelActor
 final actor RealUploadTaskDBRepository: UploadTaskDBRepository {
-
-    func store(uploadTaskDTO: UploadTaskDTO) async throws {
-        let task = DBModel.UploadTask(dto: uploadTaskDTO)
+    
+    func fetchUploadTasks() async throws -> [UploadTask] {
+        let fetchDescriptor = FetchDescriptor<Persistence.UploadTask>()
+        let tasks = try modelContext.fetch(fetchDescriptor)
+        return tasks.map { $0.toDomain() }
+    }
+    
+    func store(_ uploadTask: UploadTask) async throws {
+        let task = Persistence.UploadTask(uploadTask: uploadTask)
         try modelContext.transaction {
             modelContext.insert(task)
         }
     }
     
-    func fetchPendingUploadTasks() async throws -> [UploadTaskDTO] {
-        // Workaround for the issue where #Predicate doesn’t work with enums
-        let pending = DBModel.UploadTask.Status.pending
-        let failed = DBModel.UploadTask.Status.failed
-        
-        let predicate = #Predicate<DBModel.UploadTask> {
-            $0.uploadStatus == pending ||
-            $0.uploadStatus == failed
-        }
-        let fetchDescriptor = FetchDescriptor<DBModel.UploadTask>(predicate: predicate)
-        
-        let tasks = try modelContext.fetch(fetchDescriptor)
-        return tasks.map { $0.toDTO() }
-    }
-    
-    func update(uploadTaskDTO: UploadTaskDTO, for taskID: UUID) async throws {
-        let predicate = #Predicate<DBModel.UploadTask> { $0.id == taskID }
-        let fetchDescriptor = FetchDescriptor<DBModel.UploadTask>(predicate: predicate)
-        guard let task = try modelContext.fetch(fetchDescriptor).first else {
-            // Optionally, throw an error if the task is not found.
-            return
-        }
+    func update(_ uploadTask: UploadTask) async throws {
+        guard let existing: Persistence.UploadTask = try modelContext.existingModel(for: uploadTask.id) else { return }
         
         try modelContext.transaction {
-            task.name = uploadTaskDTO.name
-            task.imageURLs = uploadTaskDTO.imageURLs
-            task.createdAt = uploadTaskDTO.createdAt
-            task.retryCount = uploadTaskDTO.retryCount
-            task.uploadStatus = uploadTaskDTO.uploadStatus
+            existing.name = uploadTask.name
+            existing.retryCount = uploadTask.retryCount
+            existing.uploadStatus = uploadTask.uploadStatus
         }
     }
     
-    func delete(uploadTaskID: UUID) async throws {
-        let predicate = #Predicate<DBModel.UploadTask> { $0.id == uploadTaskID }
-        let fetchDescriptor = FetchDescriptor<DBModel.UploadTask>(predicate: predicate)
-        guard let task = try modelContext.fetch(fetchDescriptor).first else {
-            // Optionally, throw an error if the task is not found.
-            return
-        }
+    func delete(_ uploadTask: UploadTask) async throws {
+        guard let existing: Persistence.UploadTask = try modelContext.existingModel(for: uploadTask.id) else { return }
         
         try modelContext.transaction {
-            modelContext.delete(task)
+            modelContext.delete(existing)
         }
     }
 }

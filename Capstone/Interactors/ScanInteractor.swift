@@ -6,14 +6,17 @@
 //
 
 import SwiftUI
+import OSLog
 
 // MARK: - Protocol
 
 protocol ScanInteractor {
-    func storeUploadTask(scanName: String, images: [UIImage]) async throws -> UploadTaskDTO
-    func upload(uploadTaskDTO: UploadTaskDTO) async throws
-    func delete(uploadTask: DBModel.UploadTask) async throws
-    func delete(scan: DBModel.Scan) async throws
+    func fetchUploadTasks() async throws -> [UploadTask]
+    func fetchScans() async throws -> [Scan]
+    func storeUploadTask(scanName: String, images: [UIImage]) async throws -> UploadTask
+    func upload(_ uploadTask: UploadTask) async throws
+    func delete(_ uploadTask: UploadTask) async throws
+    func delete(_ scan: Scan) async throws
     func deleteAll() async throws
 }
 
@@ -25,13 +28,22 @@ struct RealScanInteractor: ScanInteractor {
     let uploadTaskPersistenceRepository: UploadTaskDBRepository
     let scanPersistenceRepository: ScanDBRepository
     let fileManager: FileManager
+    let logger = Logger(subsystem: Bundle.main.bundleIdentifier!, category: "ScanInteractor")
     
-    func storeUploadTask(scanName: String, images: [UIImage]) async throws -> UploadTaskDTO {
+    func fetchUploadTasks() async throws -> [UploadTask] {
+        try await uploadTaskPersistenceRepository.fetchUploadTasks()
+    }
+    
+    func fetchScans() async throws -> [Scan] {
+        try await scanPersistenceRepository.fetchScans()
+    }
+    
+    func storeUploadTask(scanName: String, images: [UIImage]) async throws -> UploadTask {
         let taskId = UUID()
         let folderURL = try createFolder(for: taskId)
         let imageURLs = try saveImagesToDisk(images: images, in: folderURL)
         
-        let uploadTaskDTO = UploadTaskDTO(
+        let uploadTask = UploadTask(
             id: taskId,
             name: scanName,
             imageURLs: imageURLs,
@@ -40,81 +52,67 @@ struct RealScanInteractor: ScanInteractor {
             uploadStatus: .pending
         )
         
-        try await uploadTaskPersistenceRepository.store(uploadTaskDTO: uploadTaskDTO)
-        return uploadTaskDTO
+        try await uploadTaskPersistenceRepository.store(uploadTask)
+        return uploadTask
     }
     
-    func upload(uploadTaskDTO: UploadTaskDTO) async throws {
+    func upload(_ uploadTask: UploadTask) async throws {
         var imageDataArray: [Data] = []
-        for url in uploadTaskDTO.imageURLs {
+        for url in uploadTask.imageURLs {
             let data = try Data(contentsOf: url)
             imageDataArray.append(data)
         }
         
         do {
-            let response = try await webRepository.uploadScan(scanName: uploadTaskDTO.name, imageData: imageDataArray)
-            print("Upload succeeded: \(response)")
+            let response = try await webRepository.uploadScan(scanName: uploadTask.name, imageData: imageDataArray)
+            logger.debug("Upload succeeded: \(String(describing: response))")
             
-            // Update task status to succeeded.
-            let updatedTaskDTO = UploadTaskDTO(
-                id: uploadTaskDTO.id,
-                name: uploadTaskDTO.name,
-                imageURLs: uploadTaskDTO.imageURLs,
-                createdAt: uploadTaskDTO.createdAt,
-                retryCount: uploadTaskDTO.retryCount,
-                uploadStatus: .succeeded
-            )
+            var uploadTask = uploadTask
+            uploadTask.uploadStatus = .succeeded
 
-            try await uploadTaskPersistenceRepository.update(uploadTaskDTO: updatedTaskDTO, for: uploadTaskDTO.id)
+            try await uploadTaskPersistenceRepository.update(uploadTask)
+            
         } catch {
-            print("Upload failed: \(error)")
+            logger.debug("Upload failed: \(error)")
             
-            // Update with a failed status and increment the retry count.
-            let updatedTaskDTO = UploadTaskDTO(
-                id: uploadTaskDTO.id,
-                name: uploadTaskDTO.name,
-                imageURLs: uploadTaskDTO.imageURLs,
-                createdAt: uploadTaskDTO.createdAt,
-                retryCount: uploadTaskDTO.retryCount + 1,
-                uploadStatus: .failed
-            )
+            var uploadTask = uploadTask
+            uploadTask.uploadStatus = .failed
+            uploadTask.retryCount += 1
             
-            try await uploadTaskPersistenceRepository.update(uploadTaskDTO: updatedTaskDTO, for: uploadTaskDTO.id)
-            
-            // TODO: Schedule a retry.
+            try await uploadTaskPersistenceRepository.update(uploadTask)
         }
     }
     
-    func processPendingUploads() async {
+    private func processPendingUploads() async {
         do {
-            let pendingTasks = try await uploadTaskPersistenceRepository.fetchPendingUploadTasks()
+            let pendingTasks = try await uploadTaskPersistenceRepository.fetchUploadTasks()
             for task in pendingTasks {
-                try await upload(uploadTaskDTO: task)
+                try await upload(task)
             }
         } catch {
-            print("Error processing pending uploads: \(error)")
+            logger.debug("Error processing pending uploads: \(error)")
         }
     }
     
-    func delete(uploadTask: DBModel.UploadTask) async throws {
-        try await uploadTaskPersistenceRepository.delete(uploadTaskID: uploadTask.id)
+    func delete(_ uploadTask: UploadTask) async throws {
+        try await uploadTaskPersistenceRepository.delete(uploadTask)
         try deleteImagesFromDisk(for: uploadTask)
     }
     
-    func delete(scan: DBModel.Scan) async throws {
-        try await scanPersistenceRepository.delete(scanID: scan.id)
+    func delete(_ scan: Scan) async throws {
+        try await scanPersistenceRepository.delete(scan)
     }
     
     func deleteAll() async throws {
-        let uploadTasks = try await uploadTaskPersistenceRepository.fetchPendingUploadTasks()
-        let scans = try await scanPersistenceRepository.fetchAllScans()
+        let uploadTasks = try await uploadTaskPersistenceRepository.fetchUploadTasks()
+        let scans = try await scanPersistenceRepository.fetchScans()
         
         for uploadTask in uploadTasks {
-            try await delete(uploadTask: DBModel.UploadTask(dto: uploadTask))
+            try await delete(uploadTask)
         }
         
         for scan in scans {
-            try await delete(scan: DBModel.Scan(dto: scan))
+            try await delete(scan)
         }
     }
 }
@@ -145,7 +143,7 @@ extension RealScanInteractor {
         return urls
     }
     
-    private func deleteImagesFromDisk(for uploadTask: DBModel.UploadTask) throws {
+    private func deleteImagesFromDisk(for uploadTask: UploadTask) throws {
         guard let documentsURL = fileManager.urls(for: .documentDirectory, in: .userDomainMask).first else {
             throw NSError(
                 domain: "FileManager",
@@ -163,24 +161,11 @@ extension RealScanInteractor {
 // MARK: - Stub
 
 struct StubScanInteractor: ScanInteractor {
-    
-    func storeUploadTask(scanName: String, images: [UIImage]) async throws -> UploadTaskDTO {
-        return .sample
-    }
-    
-    func upload(uploadTaskDTO: UploadTaskDTO) async throws {
-        
-    }
-    
-    func delete(uploadTask: DBModel.UploadTask) async throws {
-        
-    }
-    
-    func delete(scan: DBModel.Scan) async throws {
-        
-    }
-    
-    func deleteAll() async throws {
-        
-    }
+    func fetchUploadTasks() async throws -> [UploadTask] { [] }
+    func fetchScans() async throws -> [Scan] { [] }
+    func storeUploadTask(scanName: String, images: [UIImage]) async throws -> UploadTask { .sample }
+    func upload(_ uploadTask: UploadTask) async throws { }
+    func delete(_ uploadTask: UploadTask) async throws { }
+    func delete(_ scan: Scan) async throws { }
+    func deleteAll() async throws { }
 }

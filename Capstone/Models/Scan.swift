@@ -5,17 +5,17 @@
 //  Created by Seungwoo Choe on 2025-04-09.
 //
 
-import SwiftUI
+import Foundation
 import SwiftData
 
-struct ScanDTO: Sendable {
+struct Scan: Identifiable, Hashable {
     let id: UUID
     let name: String
     let usdzURL: URL
     let processedDate: Date
 }
 
-extension DBModel {
+extension Persistence {
     
     @Model
     final class Scan {
@@ -33,21 +33,24 @@ extension DBModel {
             self.usdzURL = usdzURL
             self.processedDate = processedDate
         }
-        
-        convenience init(dto: ScanDTO) {
-            self.init(id: dto.id,
-                      name: dto.name,
-                      usdzURL: dto.usdzURL,
-                      processedDate: dto.processedDate)
-        }
-        
-        func toDTO() -> ScanDTO {
-            return ScanDTO(
-                id: id,
-                name: name,
-                usdzURL: usdzURL,
-                processedDate: processedDate
-            )
-        }
+    }
+}
+
+extension Persistence.Scan {
+    
+    convenience init(scan: Scan) {
+        self.init(id: scan.id,
+                  name: scan.name,
+                  usdzURL: scan.usdzURL,
+                  processedDate: scan.processedDate)
+    }
+
+    func toDomain() -> Scan {
+        return Scan(
+            id: id,
+            name: name,
+            usdzURL: usdzURL,
+            processedDate: processedDate
+        )
     }
 }

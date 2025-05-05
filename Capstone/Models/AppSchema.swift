@@ -7,15 +7,15 @@
 
 import SwiftData
 
-enum DBModel { }
+enum Persistence { }
 
 extension Schema {
     private static var actualVersion: Schema.Version = Version(1, 0, 0)
 
     static var appSchema: Schema {
         Schema([
-            DBModel.UploadTask.self,
-            DBModel.Scan.self,
+            Persistence.UploadTask.self,
+            Persistence.Scan.self,
         ], version: actualVersion)
     }
 }

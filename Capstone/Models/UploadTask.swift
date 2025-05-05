@@ -8,31 +8,50 @@
 import SwiftUI
 import SwiftData
 
-extension DBModel {
+struct UploadTask: Identifiable {
+    let id: UUID
+    var name: String
+    let imageURLs: [URL]
+    let createdAt: Date
+    var retryCount: Int
+    var uploadStatus: UploadTaskStatus
+}
+
+enum UploadTaskStatus: Codable, Equatable {
+    case pending
+    case inProgress
+    case failed
+    case succeeded
+    
+    var displayString: String {
+        switch self {
+        case .pending: return "Pending"
+        case .inProgress: return "In Progress"
+        case .failed: return "Failed"
+        case .succeeded: return "Succeeded"
+        }
+    }
+}
+
+extension Persistence {
     
     @Model
     final class UploadTask {
-        
-        enum Status: String, Codable, Equatable {
-            case pending
-            case inProgress
-            case failed
-            case succeeded
-        }
+
         
         @Attribute(.unique) var id: UUID
         var name: String
         var imageURLs: [URL]
         var createdAt: Date
         var retryCount: Int
-        var uploadStatus: Status
+        var uploadStatus: UploadTaskStatus
         
         init(id: UUID,
              name: String,
              imageURLs: [URL],
              createdAt: Date = Date(),
              retryCount: Int = 0,
-             uploadStatus: Status = .pending) {
+             uploadStatus: UploadTaskStatus = .pending) {
             self.id = id
             self.name = name
             self.imageURLs = imageURLs
@@ -40,40 +59,34 @@ extension DBModel {
             self.retryCount = retryCount
             self.uploadStatus = uploadStatus
         }
-        
-        convenience init(dto: UploadTaskDTO) {
-            self.init(id: dto.id,
-                      name: dto.name,
-                      imageURLs: dto.imageURLs,
-                      createdAt: dto.createdAt,
-                      retryCount: dto.retryCount,
-                      uploadStatus: dto.uploadStatus)
-        }
-        
-        func toDTO() -> UploadTaskDTO {
-            return UploadTaskDTO(
-                id: id,
-                name: name,
-                imageURLs: imageURLs,
-                createdAt: createdAt,
-                retryCount: retryCount,
-                uploadStatus: uploadStatus
-            )
-        }
     }
 }
 
-struct UploadTaskDTO: Sendable {
-    let id: UUID
-    let name: String
-    let imageURLs: [URL]
-    let createdAt: Date
-    let retryCount: Int
-    let uploadStatus: DBModel.UploadTask.Status
+extension Persistence.UploadTask {
+    
+    convenience init(uploadTask: UploadTask) {
+        self.init(id: uploadTask.id,
+                  name: uploadTask.name,
+                  imageURLs: uploadTask.imageURLs,
+                  createdAt: uploadTask.createdAt,
+                  retryCount: uploadTask.retryCount,
+                  uploadStatus: uploadTask.uploadStatus)
+    }
+    
+    func toDomain() -> UploadTask {
+        return UploadTask(
+            id: id,
+            name: name,
+            imageURLs: imageURLs,
+            createdAt: createdAt,
+            retryCount: retryCount,
+            uploadStatus: uploadStatus
+        )
+    }
 }
 
-extension UploadTaskDTO {
-    static let sample = UploadTaskDTO(
+extension UploadTask {
+    static let sample = UploadTask(
         id: UUID(),
         name: "Sample",
         imageURLs: [URL(string: "https://example.com/image1.jpg")!],

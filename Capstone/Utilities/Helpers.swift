@@ -7,6 +7,7 @@
 
 import Foundation
 import Combine
+import SwiftData
 
 extension ProcessInfo {
     var isRunningTests: Bool {
@@ -48,6 +49,15 @@ enum SCApp {
     static let name = Bundle.main.object(forInfoDictionaryKey: kCFBundleNameKey as String) as! String
     static let licence = Bundle.main.object(forInfoDictionaryKey: "NSHumanReadableCopyright") as! String
     static let version = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as! String
+}
+
+extension ModelContext {
+    func existingModel<T>(for id: UUID) throws -> T? where T: PersistentModel, T.ID == UUID {
+        let fetchDescriptor = FetchDescriptor<T>(
+            predicate: #Predicate { $0.id == id }
+        )
+        return try fetch(fetchDescriptor).first
+    }
 }
 
 // MARK: - View Inspection helper

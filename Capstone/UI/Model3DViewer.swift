@@ -10,7 +10,7 @@ import RealityKit
 
 struct Model3DViewer: View {
     
-    let scan: DBModel.Scan
+    let scan: Scan
     @Environment(\.dismiss) private var dismiss
 
     var body: some View {
@@ -57,7 +57,7 @@ struct Model3DViewer: View {
         // (Implement the actual export logic based on your needs.)
     }
     
-    private func deleteScan(_ scan: DBModel.Scan) {
+    private func deleteScan(_ scan: Scan) {
         // Delete the scan from local storage.
         // (Integrate SwiftData deletion here.)
     }

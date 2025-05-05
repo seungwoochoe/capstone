@@ -9,16 +9,15 @@ import SwiftData
 
 extension ModelContainer {
     
-    static func appModelContainer(inMemoryOnly: Bool = false,
-                                  isStub: Bool = false)
+    static func appModelContainer(inMemoryOnly: Bool = false)
     throws -> ModelContainer {
         let schema = Schema.appSchema
-        let configuration = ModelConfiguration(isStub ? "stub" : nil, schema: schema, isStoredInMemoryOnly: inMemoryOnly)
+        let configuration = ModelConfiguration(inMemoryOnly ? "stub" : nil, schema: schema, isStoredInMemoryOnly: inMemoryOnly)
         return try ModelContainer(for: schema, configurations: [configuration])
     }
     
-    static var stub: ModelContainer {
-        try! appModelContainer(inMemoryOnly: true, isStub: true)
+    static var inMemory: ModelContainer {
+        try! appModelContainer(inMemoryOnly: true)
     }
     
     var isStub: Bool {

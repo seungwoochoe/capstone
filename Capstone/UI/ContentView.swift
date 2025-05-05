@@ -14,16 +14,16 @@ struct ContentView: View {
     
     @Environment(\.injected) private var injected
     @Environment(\.colorScheme) private var colorScheme
-    @Query(sort: \DBModel.Scan.processedDate, order: .reverse) var scans: [DBModel.Scan]
-    @Query(sort: \DBModel.UploadTask.createdAt, order: .reverse) var uploadTasks: [DBModel.UploadTask]
-
+    @State private var scans: [Scan] = []
+    @State private var uploadTasks: [UploadTask] = []
+    
     @State private var searchIsPresented: Bool = false
     @State private var searchText: String = ""
     @State private var showingScanner: Bool = false
     @State private var showingAbout: Bool = false
-    @State private var selected: DBModel.Scan? = nil
+    @State private var selected: Scan? = nil
     
-    var filteredUploadTasks: [DBModel.UploadTask] {
+    var filteredUploadTasks: [UploadTask] {
         if searchText.isEmpty {
             return uploadTasks
         } else {
@@ -32,8 +32,8 @@ struct ContentView: View {
             }
         }
     }
-
-    var filteredScans: [DBModel.Scan] {
+    
+    var filteredScans: [Scan] {
         if searchText.isEmpty {
             return scans
         } else {
@@ -44,6 +44,14 @@ struct ContentView: View {
     }
     
     var body: some View {
+        content
+            .onAppear {
+                loadUploadTasks()
+                loadScans()
+            }
+    }
+    
+    var content: some View {
         NavigationStack {
             ZStack(alignment: .bottom) {
                 Group {
@@ -62,7 +70,7 @@ struct ContentView: View {
                     else {
                         List {
                             Section {
-                                ForEach(filteredUploadTasks, id: \.id) { uploadTask in
+                                ForEach(filteredUploadTasks) { uploadTask in
                                     UploadTaskRowView(uploadTask: uploadTask)
                                 }
                                 .onDelete(perform: deleteUploadTasks)
@@ -73,7 +81,7 @@ struct ContentView: View {
                             }
                             
                             Section {
-                                ForEach(filteredScans, id: \.id) { scan in
+                                ForEach(filteredScans) { scan in
                                     Button {
                                         selected = scan
                                     } label: {
@@ -135,6 +143,8 @@ struct ContentView: View {
                 Model3DViewer(scan: scan)
             }
             .fullScreenCover(isPresented: $showingScanner) {
+                loadUploadTasks()
+            } content: {
                 RoomScannerView()
             }
             .sheet(isPresented: $showingAbout) {
@@ -145,12 +155,36 @@ struct ContentView: View {
     
     // MARK: - Helper Functions
     
+    private func loadUploadTasks() {
+        Task.detached {
+            let uploadTasks = try await injected.interactors.scanInteractor.fetchUploadTasks()
+            
+            await MainActor.run {
+                withAnimation {
+                    self.uploadTasks = uploadTasks
+                }
+            }
+        }
+    }
+    
+    private func loadScans() {
+        Task.detached {
+            let scans = try await injected.interactors.scanInteractor.fetchScans()
+            
+            await MainActor.run {
+                withAnimation {
+                    self.scans = scans
+                }
+            }
+        }
+    }
+    
     private func deleteUploadTasks(offsets: IndexSet) {
         for index in offsets {
             let uploadTask = filteredUploadTasks[index]
             
             Task {
-                try await injected.interactors.scanInteractor.delete(uploadTask: uploadTask)
+                try await injected.interactors.scanInteractor.delete(uploadTask)
             }
         }
     }
@@ -160,7 +194,7 @@ struct ContentView: View {
             let scan = filteredScans[index]
             
             Task {
-                try await injected.interactors.scanInteractor.delete(scan: scan)
+                try await injected.interactors.scanInteractor.delete(scan)
             }
         }
     }
@@ -175,7 +209,7 @@ struct ContentView: View {
 // MARK: - UploadTask Row View
 
 struct UploadTaskRowView: View {
-    let uploadTask: DBModel.UploadTask
+    let uploadTask: UploadTask
     
     var body: some View {
         HStack {
@@ -187,7 +221,7 @@ struct UploadTaskRowView: View {
                 Text(uploadTask.name)
                     .font(.headline)
                     .foregroundColor(.primary)
-                Text(uploadTask.uploadStatus.rawValue)
+                Text(uploadTask.uploadStatus.displayString)
                     .font(.subheadline)
                     .foregroundColor(.secondary)
             }
@@ -198,7 +232,7 @@ struct UploadTaskRowView: View {
 // MARK: - Room Row View
 
 struct ScanRowView: View {
-    let scan: DBModel.Scan
+    let scan: Scan
     
     var body: some View {
         HStack {

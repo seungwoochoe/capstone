@@ -1,5 +1,5 @@
 //
-//  CapstoneApp.swift
+//  App.swift
 //  Capstone
 //
 //  Created by Seungwoo Choe on 2025-03-30.

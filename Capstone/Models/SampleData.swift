@@ -11,10 +11,9 @@ import SwiftData
 struct SampleData: PreviewModifier {
     
     static func makeSharedContext() async throws -> ModelContainer {
-        let config = ModelConfiguration(isStoredInMemoryOnly: true)
-        let container = try ModelContainer(for: Schema.appSchema, configurations: config)
-        DBModel.Scan.makeSampleScans(in: container)
-        DBModel.UploadTask.makeSampleUploadTasks(in: container)
+        let container = ModelContainer.inMemory
+        Persistence.Scan.makeSampleScans(in: container)
+        Persistence.UploadTask.makeSampleUploadTasks(in: container)
         return container
     }
     
@@ -29,31 +28,31 @@ extension PreviewTrait where T == Preview.ViewTraits {
 
 // MARK: - DBModel.Scan
 
-extension DBModel.Scan {
+extension Persistence.Scan {
     
     @MainActor static func makeSampleScans(in container: ModelContainer) {
         let context = container.mainContext
         
-        let sampleDTOs: [ScanDTO] = [
-            ScanDTO(
+        let sampleDTOs: [Scan] = [
+            Scan(
                 id: UUID(),
                 name: "Living Room",
                 usdzURL: URL(string: "https://example.com/livingroom.usdz")!,
                 processedDate: Date()
             ),
-            ScanDTO(
+            Scan(
                 id: UUID(),
                 name: "Kitchen",
                 usdzURL: URL(string: "https://example.com/kitchen.usdz")!,
                 processedDate: Date()
             ),
-            ScanDTO(
+            Scan(
                 id: UUID(),
                 name: "Bedroom",
                 usdzURL: URL(string: "https://example.com/bedroom.usdz")!,
                 processedDate: Date()
             ),
-            ScanDTO(
+            Scan(
                 id: UUID(),
                 name: "Bathroom",
                 usdzURL: URL(string: "https://example.com/livingroom.usdz")!,
@@ -62,7 +61,7 @@ extension DBModel.Scan {
         ]
         
         sampleDTOs.forEach { dto in
-            let scan = DBModel.Scan(dto: dto)
+            let scan = Persistence.Scan(scan: dto)
             context.insert(scan)
         }
     }
@@ -70,13 +69,13 @@ extension DBModel.Scan {
 
 // MARK: - DBModel.UploadTask
 
-extension DBModel.UploadTask {
+extension Persistence.UploadTask {
     
     @MainActor static func makeSampleUploadTasks(in container: ModelContainer) {
         let context = container.mainContext
         
-        let sampleDTOs: [UploadTaskDTO] = [
-            UploadTaskDTO(
+        let sampleDTOs: [UploadTask] = [
+            UploadTask(
                 id: UUID(),
                 name: "Living Room",
                 imageURLs: [],
@@ -84,7 +83,7 @@ extension DBModel.UploadTask {
                 retryCount: 0,
                 uploadStatus: .failed
             ),
-            UploadTaskDTO(
+            UploadTask(
                 id: UUID(),
                 name: "Kitchen Room",
                 imageURLs: [],
@@ -92,7 +91,7 @@ extension DBModel.UploadTask {
                 retryCount: 0,
                 uploadStatus: .inProgress
             ),
-            UploadTaskDTO(
+            UploadTask(
                 id: UUID(),
                 name: "Bedroom",
                 imageURLs: [],
@@ -100,7 +99,7 @@ extension DBModel.UploadTask {
                 retryCount: 0,
                 uploadStatus: .inProgress
             ),
-            UploadTaskDTO(
+            UploadTask(
                 id: UUID(),
                 name: "Bathroom",
                 imageURLs: [],
@@ -111,7 +110,7 @@ extension DBModel.UploadTask {
         ]
         
         sampleDTOs.forEach { dto in
-            let uploadTask = DBModel.UploadTask(dto: dto)
+            let uploadTask = Persistence.UploadTask(uploadTask: dto)
             context.insert(uploadTask)
         }
     }

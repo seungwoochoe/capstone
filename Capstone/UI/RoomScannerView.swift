@@ -8,6 +8,7 @@
 import SwiftUI
 import ARKit
 import RealityKit
+import OSLog
 
 // MARK: - RoomScannerView
 
@@ -27,6 +28,7 @@ struct RoomScannerView: View {
     
     private let totalCaptures: Int = 60
     private let angleThresholdDegrees: Float = 6.0  // One segment per 6° rotation.
+    private let logger = Logger(subsystem: Bundle.main.bundleIdentifier!, category: "RoomScannerView")
     
     var body: some View {
         ZStack(alignment: .bottom) {
@@ -93,8 +95,8 @@ struct RoomScannerView: View {
             TextField("Enter scan name", text: $scanName)
             Button("OK") {
                 Task {
-                    let uploadTaskDTO = try await injected.interactors.scanInteractor.storeUploadTask(scanName: scanName, images: capturedImages)
-                    try await injected.interactors.scanInteractor.upload(uploadTaskDTO: uploadTaskDTO)
+                    let uploadTask = try await injected.interactors.scanInteractor.storeUploadTask(scanName: scanName, images: capturedImages)
+                    try await injected.interactors.scanInteractor.upload(uploadTask)
                 }
                 dismiss()
             }
@@ -140,7 +142,7 @@ struct RoomScannerView: View {
         guard capturedImages.count < totalCaptures else { return }
         
         guard let arView = arView else {
-            print("ARView not ready for snapshot. Retrying...")
+            logger.debug("ARView not ready for snapshot. Retrying...")
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
                 captureImage(currentAngle: currentAngle)
             }
@@ -151,15 +153,15 @@ struct RoomScannerView: View {
             if let image = image {
                 DispatchQueue.main.async {
                     self.capturedImages.append(image)
-                    print("Captured image \(self.capturedImages.count) at angle: \(currentAngle)°")
+                    logger.debug("Captured image \(self.capturedImages.count) at angle: \(currentAngle)°")
                     if self.capturedImages.count == self.totalCaptures {
-                        print("Capture complete with \(self.capturedImages.count) images.")
+                        logger.debug("Capture complete with \(self.capturedImages.count) images.")
                         self.arView?.session.pause()
                         self.isScanNamePromptPresented = true
                     }
                 }
             } else {
-                print("Snapshot failed. Retrying...")
+                logger.debug("Snapshot failed. Retrying...")
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
                     captureImage(currentAngle: currentAngle)
                 }
