@@ -29,20 +29,11 @@ extension AppEnvironment {
                 ContentView()
                     .modifier(RootViewAppearance())
                     .modelContainer(modelContainer)
-                    .attachEnvironmentOverrides(onChange: onChangeHandler)
                     .inject(diContainer)
                 if modelContainer.isStub {
                     Text("⚠️ There is an issue with local database")
                         .font(.caption2)
                 }
-            }
-        }
-    }
-
-    private var onChangeHandler: (EnvironmentValues.Diff) -> Void {
-        return { diff in
-            if !diff.isDisjoint(with: [.locale, .sizeCategory]) {
-                self.diContainer.appState[\.routing] = AppState.ViewRouting()
             }
         }
     }
