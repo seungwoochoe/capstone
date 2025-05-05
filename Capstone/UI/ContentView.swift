@@ -19,8 +19,8 @@ struct ContentView: View {
 
     @State private var searchIsPresented: Bool = false
     @State private var searchText: String = ""
-    @State private var showScanner: Bool = false
-    @State private var showAbout: Bool = false
+    @State private var showingScanner: Bool = false
+    @State private var showingAbout: Bool = false
     @State private var selected: DBModel.Scan? = nil
     
     var filteredUploadTasks: [DBModel.UploadTask] {
@@ -96,7 +96,7 @@ struct ContentView: View {
                         HStack(spacing: 16) {
                             Menu {
                                 Button("About") {
-                                    showAbout = true
+                                    showingAbout = true
                                 }
                                 Button("Log Out") {
                                     logOutUser()
@@ -113,7 +113,7 @@ struct ContentView: View {
                     .overlay {
                         if !searchIsPresented {
                             Button {
-                                showScanner = true
+                                showingScanner = true
                             } label: {
                                 Image(systemName: "plus")
                                     .font(.largeTitle)
@@ -134,11 +134,11 @@ struct ContentView: View {
             .navigationDestination(item: $selected) { scan in
                 Model3DViewer(scan: scan)
             }
-            .fullScreenCover(isPresented: $showScanner) {
+            .fullScreenCover(isPresented: $showingScanner) {
                 RoomScannerView()
             }
-            .sheet(isPresented: $showAbout) {
-                AboutView()
+            .sheet(isPresented: $showingAbout) {
+                AboutView(showingAbout: $showingAbout)
             }
         }
     }
