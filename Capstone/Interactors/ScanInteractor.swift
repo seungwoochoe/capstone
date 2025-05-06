@@ -16,7 +16,6 @@ protocol ScanInteractor {
     func storeUploadTask(scanName: String, images: [UIImage]) async throws -> UploadTask
     func upload(_ uploadTask: UploadTask) async throws
     func delete(_ uploadTask: UploadTask) async throws
-    func export(_ scan: Scan) async throws
     func delete(_ scan: Scan) async throws
     func deleteAll() async throws
 }
@@ -36,7 +35,8 @@ struct RealScanInteractor: ScanInteractor {
     }
     
     func fetchScans() async throws -> [Scan] {
-        try await scanPersistenceRepository.fetch()
+        return [.sample]
+//        try await scanPersistenceRepository.fetch()
     }
     
     func storeUploadTask(scanName: String, images: [UIImage]) async throws -> UploadTask {
@@ -82,10 +82,6 @@ struct RealScanInteractor: ScanInteractor {
             
             try await uploadTaskPersistenceRepository.update(uploadTask)
         }
-    }
-    
-    func export(_ scan: Scan) async throws {
-        
     }
     
     private func processPendingUploads() async {

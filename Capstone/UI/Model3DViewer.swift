@@ -13,35 +13,32 @@ struct Model3DViewer: View {
     
     @Environment(\.dismiss) private var dismiss
     @Environment(\.injected) private var injected
-
+    
     let scan: Scan
     let logger = Logger(subsystem: Bundle.main.bundleIdentifier!, category: "Model3DViewer")
-
+    
     var body: some View {
         NavigationStack {
             ZStack {
                 USDZModelView(modelURL: scan.usdzURL)
+                    .ignoresSafeArea()
                 
-                // Overlay controls for export and deletion
                 VStack {
                     Spacer()
-                    HStack(spacing: 20) {
-                        Button {
-                            exportModel()
-                        } label: {
+                    HStack(spacing: 60) {
+                        ShareLink(item: scan.usdzURL) {
                             Label("Export", systemImage: "square.and.arrow.up")
                                 .padding()
-                                .background(Capsule().fill(Color.blue.opacity(0.8)))
+                                .background(Capsule().fill(Color.blue.opacity(0.9)))
                                 .foregroundColor(.white)
                         }
                         
                         Button {
                             delete(scan)
-                            dismiss()
                         } label: {
                             Label("Delete", systemImage: "trash")
                                 .padding()
-                                .background(Capsule().fill(Color.red.opacity(0.8)))
+                                .background(Capsule().fill(Color.red.opacity(0.9)))
                                 .foregroundColor(.white)
                         }
                     }
@@ -49,18 +46,7 @@ struct Model3DViewer: View {
                 }
             }
             .navigationTitle(scan.name)
-        }
-    }
-    
-    // MARK: - Export and Delete Handlers
-    
-    private func exportModel() {
-        Task {
-            do {
-                try await injected.interactors.scanInteractor.export(scan)
-            } catch {
-                logger.debug("Error exporting scan: \(error)")
-            }
+            .navigationBarTitleDisplayMode(.inline)
         }
     }
     
@@ -76,11 +62,10 @@ struct Model3DViewer: View {
     }
 }
 
-
-struct USDZModelView: UIViewRepresentable {
+private struct USDZModelView: UIViewRepresentable {
     
     let modelURL: URL
-
+    
     func makeUIView(context: Context) -> SCNView {
         let sceneView = SCNView()
         if let scene = try? SCNScene(url: modelURL) {
@@ -92,8 +77,12 @@ struct USDZModelView: UIViewRepresentable {
         sceneView.backgroundColor = .white
         return sceneView
     }
-
+    
     func updateUIView(_ uiView: SCNView, context: Context) {
         // No dynamic updates
     }
+}
+
+#Preview {
+    Model3DViewer(scan: Scan.sample)
 }
