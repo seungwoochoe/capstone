@@ -6,20 +6,22 @@
 //
 
 import SwiftUI
-import RealityKit
+import SceneKit
+import OSLog
 
 struct Model3DViewer: View {
     
-    let scan: Scan
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.injected) private var injected
+
+    let scan: Scan
+    let logger = Logger(subsystem: Bundle.main.bundleIdentifier!, category: "Model3DViewer")
 
     var body: some View {
         NavigationStack {
             ZStack {
-                // ARViewContainer displays the 3D model using RealityKit
-//                ARViewContainer(usdzURL: scan.usdzURL)
-//                    .ignoresSafeArea()
-//                
+                USDZModelView(modelURL: scan.usdzURL)
+                
                 // Overlay controls for export and deletion
                 VStack {
                     Spacer()
@@ -34,7 +36,7 @@ struct Model3DViewer: View {
                         }
                         
                         Button {
-                            deleteScan(scan)
+                            delete(scan)
                             dismiss()
                         } label: {
                             Label("Delete", systemImage: "trash")
@@ -53,12 +55,45 @@ struct Model3DViewer: View {
     // MARK: - Export and Delete Handlers
     
     private func exportModel() {
-        // Use UIActivityViewController to share the USDZ file.
-        // (Implement the actual export logic based on your needs.)
+        Task {
+            do {
+                try await injected.interactors.scanInteractor.export(scan)
+            } catch {
+                logger.debug("Error exporting scan: \(error)")
+            }
+        }
     }
     
-    private func deleteScan(_ scan: Scan) {
-        // Delete the scan from local storage.
-        // (Integrate SwiftData deletion here.)
+    private func delete(_ scan: Scan) {
+        Task {
+            do {
+                try await injected.interactors.scanInteractor.delete(scan)
+                dismiss()
+            } catch {
+                logger.debug("Error deleting scan: \(error)")
+            }
+        }
+    }
+}
+
+
+struct USDZModelView: UIViewRepresentable {
+    
+    let modelURL: URL
+
+    func makeUIView(context: Context) -> SCNView {
+        let sceneView = SCNView()
+        if let scene = try? SCNScene(url: modelURL) {
+            sceneView.scene = scene
+        }
+        
+        sceneView.allowsCameraControl = true
+        sceneView.autoenablesDefaultLighting = true
+        sceneView.backgroundColor = .white
+        return sceneView
+    }
+
+    func updateUIView(_ uiView: SCNView, context: Context) {
+        // No dynamic updates
     }
 }
