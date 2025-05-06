@@ -84,14 +84,3 @@ extension Persistence.UploadTask {
         )
     }
 }
-
-extension UploadTask {
-    static let sample = UploadTask(
-        id: UUID(),
-        name: "Sample",
-        imageURLs: [URL(string: "https://example.com/image1.jpg")!],
-        createdAt: Date(),
-        retryCount: 0,
-        uploadStatus: .pending
-    )
-}

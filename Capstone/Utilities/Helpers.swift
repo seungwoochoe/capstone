@@ -51,12 +51,26 @@ enum SCApp {
     static let version = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as! String
 }
 
+enum ModelContextError: Error {
+  case notFound(id: UUID)
+  case multipleResults(id: UUID, found: Int)
+}
+
 extension ModelContext {
     func existingModel<T>(for id: UUID) throws -> T? where T: PersistentModel, T.ID == UUID {
         let fetchDescriptor = FetchDescriptor<T>(
             predicate: #Predicate { $0.id == id }
         )
-        return try fetch(fetchDescriptor).first
+        let results = try fetch(fetchDescriptor)
+        
+        switch results.count {
+        case 0:
+            throw ModelContextError.notFound(id: id)
+        case 1:
+            return results[0]
+        default:
+            throw ModelContextError.multipleResults(id: id, found: results.count)
+        }
     }
 }
 

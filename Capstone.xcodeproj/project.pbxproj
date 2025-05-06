@@ -6,7 +6,18 @@
 	objectVersion = 77;
 	objects = {
 
+/* Begin PBXContainerItemProxy section */
+		231BD9D02DC9DF2E00E2C613 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 23CF12652D99531900B88F84 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 23CF126C2D99531900B88F84;
+			remoteInfo = Capstone;
+		};
+/* End PBXContainerItemProxy section */
+
 /* Begin PBXFileReference section */
+		231BD9CC2DC9DF2E00E2C613 /* CapstoneTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = CapstoneTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		23CF126D2D99531900B88F84 /* Capstone.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Capstone.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
@@ -21,6 +32,11 @@
 /* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
+		231BD9CD2DC9DF2E00E2C613 /* CapstoneTests */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = CapstoneTests;
+			sourceTree = "<group>";
+		};
 		23CF126F2D99531900B88F84 /* Capstone */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
 			exceptions = (
@@ -32,6 +48,13 @@
 /* End PBXFileSystemSynchronizedRootGroup section */
 
 /* Begin PBXFrameworksBuildPhase section */
+		231BD9C92DC9DF2E00E2C613 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		23CF126A2D99531900B88F84 /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
@@ -46,6 +69,7 @@
 			isa = PBXGroup;
 			children = (
 				23CF126F2D99531900B88F84 /* Capstone */,
+				231BD9CD2DC9DF2E00E2C613 /* CapstoneTests */,
 				23CF126E2D99531900B88F84 /* Products */,
 			);
 			sourceTree = "<group>";
@@ -54,6 +78,7 @@
 			isa = PBXGroup;
 			children = (
 				23CF126D2D99531900B88F84 /* Capstone.app */,
+				231BD9CC2DC9DF2E00E2C613 /* CapstoneTests.xctest */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -61,6 +86,29 @@
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
+		231BD9CB2DC9DF2E00E2C613 /* CapstoneTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 231BD9D22DC9DF2E00E2C613 /* Build configuration list for PBXNativeTarget "CapstoneTests" */;
+			buildPhases = (
+				231BD9C82DC9DF2E00E2C613 /* Sources */,
+				231BD9C92DC9DF2E00E2C613 /* Frameworks */,
+				231BD9CA2DC9DF2E00E2C613 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				231BD9D12DC9DF2E00E2C613 /* PBXTargetDependency */,
+			);
+			fileSystemSynchronizedGroups = (
+				231BD9CD2DC9DF2E00E2C613 /* CapstoneTests */,
+			);
+			name = CapstoneTests;
+			packageProductDependencies = (
+			);
+			productName = CapstoneTests;
+			productReference = 231BD9CC2DC9DF2E00E2C613 /* CapstoneTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
+		};
 		23CF126C2D99531900B88F84 /* Capstone */ = {
 			isa = PBXNativeTarget;
 			buildConfigurationList = 23CF127B2D99531A00B88F84 /* Build configuration list for PBXNativeTarget "Capstone" */;
@@ -90,9 +138,13 @@
 			isa = PBXProject;
 			attributes = {
 				BuildIndependentTargetsInParallel = 1;
-				LastSwiftUpdateCheck = 1620;
+				LastSwiftUpdateCheck = 1630;
 				LastUpgradeCheck = 1620;
 				TargetAttributes = {
+					231BD9CB2DC9DF2E00E2C613 = {
+						CreatedOnToolsVersion = 16.3;
+						TestTargetID = 23CF126C2D99531900B88F84;
+					};
 					23CF126C2D99531900B88F84 = {
 						CreatedOnToolsVersion = 16.2;
 					};
@@ -115,11 +167,19 @@
 			projectRoot = "";
 			targets = (
 				23CF126C2D99531900B88F84 /* Capstone */,
+				231BD9CB2DC9DF2E00E2C613 /* CapstoneTests */,
 			);
 		};
 /* End PBXProject section */
 
 /* Begin PBXResourcesBuildPhase section */
+		231BD9CA2DC9DF2E00E2C613 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		23CF126B2D99531900B88F84 /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -130,6 +190,13 @@
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
+		231BD9C82DC9DF2E00E2C613 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		23CF12692D99531900B88F84 /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -139,7 +206,53 @@
 		};
 /* End PBXSourcesBuildPhase section */
 
+/* Begin PBXTargetDependency section */
+		231BD9D12DC9DF2E00E2C613 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 23CF126C2D99531900B88F84 /* Capstone */;
+			targetProxy = 231BD9D02DC9DF2E00E2C613 /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
+
 /* Begin XCBuildConfiguration section */
+		231BD9D32DC9DF2E00E2C613 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = PN58M5JSA7;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 18.4;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.seungwoochoe.CapstoneTests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Capstone.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/Capstone";
+			};
+			name = Debug;
+		};
+		231BD9D42DC9DF2E00E2C613 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = PN58M5JSA7;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 18.4;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.seungwoochoe.CapstoneTests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Capstone.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/Capstone";
+			};
+			name = Release;
+		};
 		23CF12792D99531A00B88F84 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
@@ -342,6 +455,15 @@
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
+		231BD9D22DC9DF2E00E2C613 /* Build configuration list for PBXNativeTarget "CapstoneTests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				231BD9D32DC9DF2E00E2C613 /* Debug */,
+				231BD9D42DC9DF2E00E2C613 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
 		23CF12682D99531900B88F84 /* Build configuration list for PBXProject "Capstone" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
