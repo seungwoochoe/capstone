@@ -9,7 +9,7 @@ import SwiftData
 import Foundation
 
 protocol UploadTaskDBRepository {
-    func fetchUploadTasks() async throws -> [UploadTask]
+    func fetch() async throws -> [UploadTask]
     func store(_ uploadTask: UploadTask) async throws
     func update(_ uploadTask: UploadTask) async throws
     func delete(_ uploadTask: UploadTask) async throws
@@ -18,7 +18,7 @@ protocol UploadTaskDBRepository {
 @ModelActor
 final actor RealUploadTaskDBRepository: UploadTaskDBRepository {
     
-    func fetchUploadTasks() async throws -> [UploadTask] {
+    func fetch() async throws -> [UploadTask] {
         let fetchDescriptor = FetchDescriptor<Persistence.UploadTask>()
         let tasks = try modelContext.fetch(fetchDescriptor)
         return tasks.map { $0.toDomain() }

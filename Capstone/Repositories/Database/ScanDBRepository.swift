@@ -9,7 +9,7 @@ import Foundation
 import SwiftData
 
 protocol ScanDBRepository {
-    func fetchScans() async throws -> [Scan]
+    func fetch() async throws -> [Scan]
     func store(_ scan: Scan) async throws
     func update(_ scan: Scan) async throws
     func delete(_ scan: Scan) async throws
@@ -18,7 +18,7 @@ protocol ScanDBRepository {
 @ModelActor
 final actor RealScanDBRepository: ScanDBRepository {
     
-    func fetchScans() async throws -> [Scan] {
+    func fetch() async throws -> [Scan] {
         let fetchDescriptor = FetchDescriptor<Persistence.Scan>()
         let scans = try modelContext.fetch(fetchDescriptor)
         return scans.map { $0.toDomain() }

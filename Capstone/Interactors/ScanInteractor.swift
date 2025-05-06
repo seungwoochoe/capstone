@@ -32,11 +32,11 @@ struct RealScanInteractor: ScanInteractor {
     let logger = Logger(subsystem: Bundle.main.bundleIdentifier!, category: "ScanInteractor")
     
     func fetchUploadTasks() async throws -> [UploadTask] {
-        try await uploadTaskPersistenceRepository.fetchUploadTasks()
+        try await uploadTaskPersistenceRepository.fetch()
     }
     
     func fetchScans() async throws -> [Scan] {
-        try await scanPersistenceRepository.fetchScans()
+        try await scanPersistenceRepository.fetch()
     }
     
     func storeUploadTask(scanName: String, images: [UIImage]) async throws -> UploadTask {
@@ -90,7 +90,7 @@ struct RealScanInteractor: ScanInteractor {
     
     private func processPendingUploads() async {
         do {
-            let pendingTasks = try await uploadTaskPersistenceRepository.fetchUploadTasks()
+            let pendingTasks = try await uploadTaskPersistenceRepository.fetch()
             for task in pendingTasks {
                 try await upload(task)
             }
@@ -109,8 +109,8 @@ struct RealScanInteractor: ScanInteractor {
     }
     
     func deleteAll() async throws {
-        let uploadTasks = try await uploadTaskPersistenceRepository.fetchUploadTasks()
-        let scans = try await scanPersistenceRepository.fetchScans()
+        let uploadTasks = try await uploadTaskPersistenceRepository.fetch()
+        let scans = try await scanPersistenceRepository.fetch()
         
         for uploadTask in uploadTasks {
             try await delete(uploadTask)
