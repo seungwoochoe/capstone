@@ -6,7 +6,6 @@
 //
 
 import SwiftUI
-import SwiftData
 
 // MARK: - Main Content View
 
@@ -236,11 +235,10 @@ struct ScanRowView: View {
     
     var body: some View {
         HStack {
-            // Placeholder thumbnail
-            Rectangle()
-                .fill(Color.gray.opacity(0.3))
-                .frame(width: 50, height: 50)
-                .cornerRadius(8)
+            USDZThumbnailView(
+                url: scan.usdzURL,
+                size: CGSize(width: 50, height: 50)
+            )
             VStack(alignment: .leading) {
                 Text(scan.name)
                     .font(.headline)
