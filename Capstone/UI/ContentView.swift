@@ -234,19 +234,14 @@ struct ScanRowView: View {
     let scan: Scan
     
     var body: some View {
-        HStack {
+        HStack(spacing: 18) {
             USDZThumbnailView(
                 url: scan.usdzURL,
                 size: CGSize(width: 50, height: 50)
             )
-            VStack(alignment: .leading) {
-                Text(scan.name)
-                    .font(.headline)
-                    .foregroundColor(.primary)
-                Text("Completed")
-                    .font(.subheadline)
-                    .foregroundColor(.secondary)
-            }
+            Text(scan.name)
+                .font(.headline)
+                .foregroundColor(.primary)
         }
     }
 }
