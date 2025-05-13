@@ -1,0 +1,58 @@
+sequenceDiagram
+    participant User as 사용자
+    participant ContentView as ContentView
+    participant RoomScanner as RoomScannerView
+    participant ARContainer as ARViewContainer/Coordinator
+    participant ScanInteractor as ScanInteractor
+    participant DBRepo as UploadTaskDBRepository/ScanDBRepository
+    participant ScanWebRepo as ScanWebRepository (Client)
+    participant Backend as 서버 (RunPod Serverless)
+    participant APNs as APNs
+    participant PushHandler as RealPushNotificationsHandler
+    participant DeepLink as DeepLinksHandler
+    participant ModelViewer as Model3DViewer
+
+    rect rgb(240, 248, 255)
+      User->>ContentView: + 버튼 탭
+      ContentView->>RoomScanner: RoomScannerView 표시
+      RoomScanner->>ARContainer: startSession()
+      ARContainer->>ARContainer: AR 세션 프레임 수신
+      loop 60번 캡처
+        ARContainer->>RoomScanner: onCameraUpdate(...)
+        alt 캡처 조건 충족
+          RoomScanner->>ARContainer: snapshot()
+          ARContainer-->>RoomScanner: UIImage
+          RoomScanner->>RoomScanner: capturedImages.append(image)
+        end
+      end
+      RoomScanner->>ScanInteractor: storeUploadTask(name, images)
+      ScanInteractor->>DBRepo: uploadTask 저장
+      ScanInteractor-->>RoomScanner: UploadTask 반환
+      RoomScanner->>ScanInteractor: upload(uploadTask)
+      ScanInteractor->>ScanWebRepo: uploadScan(name, images)
+      ScanWebRepo->>Backend: HTTP POST /uploadScan
+      Backend-->>ScanWebRepo: job ID 반환
+      ScanWebRepo-->>ScanInteractor: 작업 ID
+      ScanInteractor->>DBRepo: 상태 업데이트(.waitingForResult)
+    end
+
+    rect rgb(245, 255, 250)
+      Backend->>APNs: 처리 완료 푸시 전송
+      APNs->>PushHandler: didReceive(notification)
+      PushHandler->>ScanInteractor: handlePush(scanID)
+      ScanInteractor->>ScanWebRepo: fetchScan(id)
+      ScanWebRepo->>Backend: HTTP GET /fetchScan
+      alt status=="finished"
+        Backend-->>ScanWebRepo: DTO(usdzURL,…)
+        ScanWebRepo->>Backend: downloadUSDZ(usdzURL)
+        Backend-->>ScanWebRepo: USDZ 파일
+        ScanWebRepo-->>ScanInteractor: USDZ data
+        ScanInteractor->>DBRepo: Scan 객체 저장
+        ScanInteractor->>DBRepo: uploadTask 상태 업데이트(.finished)
+        PushHandler->>DeepLink: deepLink.showScan(scanID)
+        DeepLink->>ContentView: 네비게이션 트리거
+        ContentView->>ModelViewer: Model3DViewer 표시
+      else
+        Note over Backend: 아직 처리 중 또는 실패
+      end
+    end
