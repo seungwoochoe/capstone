@@ -18,9 +18,10 @@ protocol ScanInteractor {
     func delete(_ uploadTask: UploadTask) async throws
     func delete(_ scan: Scan) async throws
     func deleteAll() async throws
+    func handlePush(scanID: String) async
 }
 
-// MARK: - Actual Implementation
+// MARK: - Implementation
 
 struct RealScanInteractor: ScanInteractor {
     
@@ -28,72 +29,77 @@ struct RealScanInteractor: ScanInteractor {
     let uploadTaskPersistenceRepository: UploadTaskDBRepository
     let scanPersistenceRepository: ScanDBRepository
     let fileManager: FileManager
-    let logger = Logger(subsystem: Bundle.main.bundleIdentifier!, category: "ScanInteractor")
+    
+    private let logger = Logger(subsystem: Bundle.main.bundleIdentifier!,
+                                category: "ScanInteractor")
+    
+    init(webRepository: ScanWebRepository,
+         uploadTaskPersistenceRepository: UploadTaskDBRepository,
+         scanPersistenceRepository: ScanDBRepository,
+         fileManager: FileManager) {
+        self.webRepository = webRepository
+        self.uploadTaskPersistenceRepository = uploadTaskPersistenceRepository
+        self.scanPersistenceRepository = scanPersistenceRepository
+        self.fileManager = fileManager
+    }
     
     func fetchUploadTasks() async throws -> [UploadTask] {
         try await uploadTaskPersistenceRepository.fetch()
     }
     
     func fetchScans() async throws -> [Scan] {
-        return [.sample]
-//        try await scanPersistenceRepository.fetch()
+        try await scanPersistenceRepository.fetch()
     }
     
     func storeUploadTask(scanName: String, images: [UIImage]) async throws -> UploadTask {
-        let taskId = UUID()
-        let folderURL = try createFolder(for: taskId)
+        let taskID = UUID()
+        let folderURL = try createFolder(for: taskID)
         let imageURLs = try saveImagesToDisk(images: images, in: folderURL)
         
-        let uploadTask = UploadTask(
-            id: taskId,
-            name: scanName,
-            imageURLs: imageURLs,
-            createdAt: Date(),
-            retryCount: 0,
-            uploadStatus: .pending
-        )
+        let uploadTask = UploadTask(id: taskID,
+                                    name: scanName,
+                                    imageURLs: imageURLs,
+                                    createdAt: Date(),
+                                    retryCount: 0,
+                                    remoteID: nil,
+                                    uploadStatus: .pendingUpload)
         
         try await uploadTaskPersistenceRepository.store(uploadTask)
         return uploadTask
     }
     
     func upload(_ uploadTask: UploadTask) async throws {
-        var imageDataArray: [Data] = []
-        for url in uploadTask.imageURLs {
-            let data = try Data(contentsOf: url)
-            imageDataArray.append(data)
-        }
+        var mutableTask = uploadTask
+        mutableTask.uploadStatus = .uploading
+        try await uploadTaskPersistenceRepository.update(mutableTask)
         
         do {
-            let response = try await webRepository.uploadScan(scanName: uploadTask.name, imageData: imageDataArray)
-            logger.debug("Upload succeeded: \(String(describing: response))")
-            
-            var uploadTask = uploadTask
-            uploadTask.uploadStatus = .succeeded
-
-            try await uploadTaskPersistenceRepository.update(uploadTask)
-            
+            let imageDatas = try uploadTask.imageURLs.map { try Data(contentsOf: $0) }
+            let response = try await webRepository.uploadScan(name: uploadTask.name,
+                                                              images: imageDatas)
+            mutableTask.remoteID = response.id
+            mutableTask.uploadStatus = .waitingForResult
+            try await uploadTaskPersistenceRepository.update(mutableTask)
         } catch {
-            logger.debug("Upload failed: \(error)")
-            
-            var uploadTask = uploadTask
-            uploadTask.uploadStatus = .failed
-            uploadTask.retryCount += 1
-            
-            try await uploadTaskPersistenceRepository.update(uploadTask)
+            logger.error("Upload failed: \(error, privacy: .public)")
+            mutableTask.retryCount += 1
+            mutableTask.uploadStatus = .failedUpload
+            try await uploadTaskPersistenceRepository.update(mutableTask)
+            throw error
         }
     }
     
-    private func processPendingUploads() async {
+    // Push notification entry point
+    
+    func handlePush(scanID: String) async {
         do {
-            let pendingTasks = try await uploadTaskPersistenceRepository.fetch()
-            for task in pendingTasks {
-                try await upload(task)
-            }
+            try await fetchResult(for: scanID)
         } catch {
-            logger.debug("Error processing pending uploads: \(error)")
+            logger.error("Failed to fetch result for scanID \(scanID): \(error, privacy: .public)")
         }
     }
+    
+    // Delete
     
     func delete(_ uploadTask: UploadTask) async throws {
         try await uploadTaskPersistenceRepository.delete(uploadTask)
@@ -105,56 +111,76 @@ struct RealScanInteractor: ScanInteractor {
     }
     
     func deleteAll() async throws {
-        let uploadTasks = try await uploadTaskPersistenceRepository.fetch()
-        let scans = try await scanPersistenceRepository.fetch()
-        
-        for uploadTask in uploadTasks {
-            try await delete(uploadTask)
+        for task in try await uploadTaskPersistenceRepository.fetch() {
+            try await delete(task)
         }
-        
-        for scan in scans {
+        for scan in try await scanPersistenceRepository.fetch() {
             try await delete(scan)
         }
     }
-}
-
-extension RealScanInteractor {
-    private func createFolder(for id: UUID) throws -> URL {
-        guard let documentsURL = fileManager.urls(for: .documentDirectory, in: .userDomainMask).first else {
-            throw NSError(
-                domain: "FileManager",
-                code: 1,
-                userInfo: [NSLocalizedDescriptionKey: "Could not locate documents directory"]
-            )
+    
+    // MARK: - Private helpers
+    
+    private func fetchResult(for scanID: String) async throws {
+        // Resolve optional matching UploadTask (by remoteID)
+        let maybeTask = try await uploadTaskPersistenceRepository.fetch().first { $0.remoteID == scanID }
+        
+        // 1) Ask server for job state
+        let dto = try await webRepository.fetchScan(id: scanID)
+        
+        guard dto.status == "finished" else {
+            if dto.status == "failed" {
+                if var t = maybeTask {
+                    t.uploadStatus = .failedProcessing
+                    try? await uploadTaskPersistenceRepository.update(t)
+                }
+            }
+            return // still processing
         }
         
-        let folderURL = documentsURL.appendingPathComponent(id.uuidString)
-        try fileManager.createDirectory(at: folderURL, withIntermediateDirectories: true, attributes: nil)
-        return folderURL
+        // 2) Download the .usdz
+        let localUSDZ = try await webRepository.downloadUSDZ(from: dto.usdzURL)
+        
+        // 3) Persist as Scan
+        let scan = Scan(id: UUID(uuidString: dto.id) ?? .init(),
+                        name: dto.name,
+                        usdzURL: localUSDZ,
+                        processedDate: dto.processedAt)
+        try await scanPersistenceRepository.store(scan)
+        
+        // 4) Mark the uploadTask as finished (or delete it entirely)
+        if var t = maybeTask {
+            t.uploadStatus = .finished
+            try await uploadTaskPersistenceRepository.update(t)
+            // optionally: try await delete(t) to clean list
+        }
+    }
+    
+    // MARK: File‑system utilities
+    
+    private func createFolder(for id: UUID) throws -> URL {
+        guard let docs = fileManager.urls(for: .documentDirectory, in: .userDomainMask).first else {
+            throw CocoaError(.fileNoSuchFile)
+        }
+        let folder = docs.appendingPathComponent(id.uuidString)
+        try fileManager.createDirectory(at: folder, withIntermediateDirectories: true)
+        return folder
     }
     
     private func saveImagesToDisk(images: [UIImage], in folderURL: URL) throws -> [URL] {
-        var urls: [URL] = []
-        for (idx, image) in images.enumerated() {
-            guard let imageData = image.jpegData(compressionQuality: 0.3) else { continue }
-            let fileURL = folderURL.appendingPathComponent("\(idx + 1).jpg")
-            try imageData.write(to: fileURL)
-            urls.append(fileURL)
+        try images.enumerated().compactMap { idx, img in
+            guard let data = img.jpegData(compressionQuality: 0.3) else { return nil }
+            let url = folderURL.appendingPathComponent("\(idx + 1).jpg")
+            try data.write(to: url)
+            return url
         }
-        return urls
     }
     
     private func deleteImagesFromDisk(for uploadTask: UploadTask) throws {
-        guard let documentsURL = fileManager.urls(for: .documentDirectory, in: .userDomainMask).first else {
-            throw NSError(
-                domain: "FileManager",
-                code: 1,
-                userInfo: [NSLocalizedDescriptionKey: "Could not locate documents directory"]
-            )
-        }
-        let folderURL = documentsURL.appendingPathComponent(uploadTask.id.uuidString)
-        if fileManager.fileExists(atPath: folderURL.path) {
-            try fileManager.removeItem(at: folderURL)
+        guard let docs = fileManager.urls(for: .documentDirectory, in: .userDomainMask).first else { return }
+        let folder = docs.appendingPathComponent(uploadTask.id.uuidString)
+        if fileManager.fileExists(atPath: folder.path) {
+            try fileManager.removeItem(at: folder)
         }
     }
 }
@@ -170,4 +196,5 @@ struct StubScanInteractor: ScanInteractor {
     func delete(_ uploadTask: UploadTask) async throws { }
     func delete(_ scan: Scan) async throws { }
     func deleteAll() async throws { }
+    func handlePush(scanID: String) async { }
 }

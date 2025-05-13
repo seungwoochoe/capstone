@@ -52,7 +52,7 @@ extension AppEnvironment {
 
         let diContainer = DIContainer(appState: appState, interactors: interactors)
         let deepLinksHandler = RealDeepLinksHandler(diContainer: diContainer)
-        let pushNotificationsHandler = RealPushNotificationsHandler(deepLinksHandler: deepLinksHandler)
+        let pushNotificationsHandler = RealPushNotificationsHandler(scanInteractor: interactors.scanInteractor, deepLinksHandler: deepLinksHandler)
         let systemEventsHandler = RealSystemEventsHandler(container: diContainer,
                                                           deepLinksHandler: deepLinksHandler,
                                                           pushNotificationsHandler: pushNotificationsHandler,
@@ -94,7 +94,7 @@ extension AppEnvironment {
     }
     
     private static func configuredWebRepositories(session: URLSession) -> DIContainer.WebRepositories {
-        let scan = RealScanWebRepository(session: session)
+        let scan = RealScanWebRepository(session: session, baseURL: "")
         let authentication = RealAuthenticationWebRepository(session: session)
         let pushToken = RealPushTokenWebRepository(session: session)
         return .init(scanWebRepository: scan,

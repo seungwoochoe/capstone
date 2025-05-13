@@ -7,85 +7,92 @@
 
 import Foundation
 
-struct ScanUploadResponse: Codable, Equatable {
-    let taskID: String
-    let status: String
-    let message: String?
+// MARK: - DTOs
+
+/// Response returned by POST /scans – delivers the server‑side job identifier
+struct UploadResponse: Decodable {
+    let id: String
 }
 
-struct ScanResponse: Codable, Equatable {
-    let scanID: String
-    let scanName: String
+/// Response returned by GET /scans/{id}
+struct ScanResponse: Decodable {
+    let id: String
+    let name: String
     let usdzURL: URL
-    let processedDate: Date
+    let processedAt: Date
+    let status: String
 }
+
+// MARK: - Protocol
 
 protocol ScanWebRepository: WebRepository {
-    func uploadScan(scanName: String, imageData: [Data]) async throws -> ScanUploadResponse
-    func scanDetails(for scanID: String) async throws -> ScanResponse
-    func fetchScans() async throws -> [ScanResponse]
+    func uploadScan(name: String, images: [Data]) async throws -> UploadResponse
+    func fetchScan(id: String) async throws -> ScanResponse
+    func downloadUSDZ(from url: URL) async throws -> URL
 }
+
+// MARK: - RealScanWebRepository
 
 struct RealScanWebRepository: ScanWebRepository {
+
     let session: URLSession
-    let baseURL: String = "https://your-server.com/api/scans"
+    let baseURL: String
 
-    func uploadScan(scanName: String, imageData: [Data]) async throws -> ScanUploadResponse {
-        return try await call(endpoint: API.uploadScan(name: scanName, imageData: imageData))
+    init(session: URLSession = .shared, baseURL: String) {
+        self.session = session
+        self.baseURL = baseURL
     }
-    
-    func scanDetails(for scanID: String) async throws -> ScanResponse {
-        return try await call(endpoint: API.scanDetails(scanID: scanID))
+
+    func uploadScan(name: String, images: [Data]) async throws -> UploadResponse {
+        let multipart = try MultipartForm.Builder()
+            .append(name, named: "name")
+            .append(images,
+                    named: "files[]",
+                    mimeType: "image/jpeg",
+                    filenamePrefix: "image",
+                    fileExtension: "jpg")
+            .build()
+
+        return try await call(endpoint: API.UploadScan(payload: multipart))
     }
-    
-    func fetchScans() async throws -> [ScanResponse] {
-        return try await call(endpoint: API.allScans)
+
+    func fetchScan(id: String) async throws -> ScanResponse {
+        try await call(endpoint: API.ScanDetail(id: id))
+    }
+
+    func downloadUSDZ(from url: URL) async throws -> URL {
+        let (tmpURL, _) = try await session.download(from: url)
+        let dst = FileManager.default.temporaryDirectory.appendingPathComponent(url.lastPathComponent)
+        try? FileManager.default.removeItem(at: dst)
+        try FileManager.default.moveItem(at: tmpURL, to: dst)
+        return dst
     }
 }
 
-extension RealScanWebRepository {
+// MARK: - Private Endpoint definitions
+
+private extension RealScanWebRepository {
+
     enum API {
-        case uploadScan(name: String, imageData: [Data])
-        case scanDetails(scanID: String)
-        case allScans
-    }
-}
+        /// POST /scans – multipart
+        struct UploadScan: APICall {
+            let payload: MultipartPayload
 
-extension RealScanWebRepository.API: APICall {
-    var path: String {
-        switch self {
-        case .uploadScan:
-            return "/upload"
-        case let .scanDetails(scanID):
-            return "/\(scanID)"
-        case .allScans:
-            return "/list"
+            var path: String { "/scans" }
+            var method: String { "POST" }
+            var headers: [String : String]? {
+                ["Content-Type": payload.contentType]
+            }
+            func body() throws -> Data? { payload.data }
         }
-    }
-    
-    var method: String {
-        switch self {
-        case .uploadScan: return "POST"
-        case .scanDetails, .allScans: return "GET"
-        }
-    }
-    
-    var headers: [String: String]? {
-        ["Content-Type": "application/json", "Accept": "application/json"]
-    }
-    
-    func body() throws -> Data? {
-        switch self {
-        case let .uploadScan(name, imageData):
-            // This assumes a JSON payload:
-            let payload: [String: Any] = [
-                "name": name,
-                // Encode the images appropriately (base64, or pass them as form-data).
-                "images": imageData.map { $0.base64EncodedString() }
-            ]
-            return try JSONSerialization.data(withJSONObject: payload, options: [])
-        default:
-            return nil
+
+        /// GET /scans/{id}
+        struct ScanDetail: APICall {
+            let id: String
+            var path: String { "/scans/\(id)" }
+            var method: String { "GET" }
+            var headers: [String : String]? { nil }
+            func body() throws -> Data? { nil }
         }
     }
 }

@@ -11,9 +11,11 @@ protocol PushNotificationsHandler { }
 
 final class RealPushNotificationsHandler: NSObject, PushNotificationsHandler {
     
+    private let scanInteractor: ScanInteractor
     private let deepLinksHandler: DeepLinksHandler
     
-    init(deepLinksHandler: DeepLinksHandler) {
+    init(scanInteractor: ScanInteractor, deepLinksHandler: DeepLinksHandler) {
+        self.scanInteractor = scanInteractor
         self.deepLinksHandler = deepLinksHandler
         super.init()
         UNUserNotificationCenter.current().delegate = self
@@ -39,12 +41,10 @@ extension RealPushNotificationsHandler: UNUserNotificationCenterDelegate {
     }
     
     func handleNotification(userInfo: [AnyHashable : Any], completionHandler: @escaping () -> Void) {
-        guard let scanID = userInfo["scanID"] as? String else {
-            completionHandler()
-            return
-        }
+        guard let scanID = userInfo["scanID"] as? String else { completionHandler(); return }
         
         Task { @MainActor in
+            await scanInteractor.handlePush(scanID: scanID)
             deepLinksHandler.open(deepLink: .showScan(scanID: scanID))
             completionHandler()
         }

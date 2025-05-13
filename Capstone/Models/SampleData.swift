@@ -24,6 +24,6 @@ extension UploadTask {
         imageURLs: [URL(string: "https://example.com/image1.jpg")!],
         createdAt: Date(),
         retryCount: 0,
-        uploadStatus: .pending
+        uploadStatus: .pendingUpload
     )
 }

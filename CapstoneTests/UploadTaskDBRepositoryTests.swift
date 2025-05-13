@@ -42,14 +42,14 @@ struct RealUploadTaskDBRepositoryTests {
         
         sample.name = "Updated Name"
         sample.retryCount = 5
-        sample.uploadStatus = .inProgress
+        sample.uploadStatus = .uploading
         try await repository.update(sample)
         
         let tasks = try await repository.fetch()
         let updated = try #require(tasks.first)
         #expect(updated.name == "Updated Name")
         #expect(updated.retryCount == 5)
-        #expect(updated.uploadStatus == .inProgress)
+        #expect(updated.uploadStatus == .uploading)
     }
     
     @Test("delete removes the task")
@@ -70,7 +70,7 @@ struct RealUploadTaskDBRepositoryTests {
             imageURLs: [],
             createdAt: Date(),
             retryCount: 0,
-            uploadStatus: .failed
+            uploadStatus: .failedUpload
         )
         await #expect {
             try await repository.update(nonExistent)
@@ -90,7 +90,7 @@ struct RealUploadTaskDBRepositoryTests {
             imageURLs: [],
             createdAt: Date(),
             retryCount: 0,
-            uploadStatus: .failed
+            uploadStatus: .failedUpload
         )
         await #expect {
             try await repository.delete(nonExistent)
