@@ -8,25 +8,56 @@
 import Foundation
 
 protocol PushTokenWebRepository: WebRepository {
-    func register(devicePushToken: Data) async throws
+    func registerPushToken(_ token: Data) async throws
+    func unregisterPushToken(_ token: Data) async throws
 }
 
 struct RealPushTokenWebRepository: PushTokenWebRepository {
+    
     let session: URLSession
-    let baseURL: String = "https://your-server.com/api/push-token"
+    let baseURL: String
 
-    func register(devicePushToken: Data) async throws {
-        let tokenPayload = ["token": devicePushToken.base64EncodedString()]
-        let bodyData = try JSONSerialization.data(withJSONObject: tokenPayload, options: [])
-        var request = URLRequest(url: URL(string: baseURL)!)
-        request.httpMethod = "POST"
-        request.allHTTPHeaderFields = ["Content-Type": "application/json"]
-        request.httpBody = bodyData
-        
-        let (_, response) = try await session.data(for: request)
-        guard let httpResponse = response as? HTTPURLResponse,
-              (200..<300).contains(httpResponse.statusCode) else {
-            throw APIError.unexpectedResponse
+    init(session: URLSession = .shared, baseURL: String) {
+        self.session = session
+        self.baseURL = baseURL
+    }
+
+    func registerPushToken(_ token: Data) async throws {
+        let hexToken = token.map { String(format: "%02x", $0) }.joined()
+        let payload = ["token": hexToken]
+        let bodyData = try JSONEncoder().encode(payload)
+        _ = try await call(endpoint: API.Register(bodyData: bodyData)) as EmptyResponse
+    }
+
+    func unregisterPushToken(_ token: Data) async throws {
+        let hexToken = token.map { String(format: "%02x", $0) }.joined()
+        let payload = ["token": hexToken]
+        let bodyData = try JSONEncoder().encode(payload)
+        _ = try await call(endpoint: API.Unregister(bodyData: bodyData)) as EmptyResponse
+    }
+}
+
+private extension RealPushTokenWebRepository {
+    enum API {
+        /// POST /devices/push-token
+        struct Register: APICall {
+            let bodyData: Data
+            var path: String { "/devices/push-token" }
+            var method: String { "POST" }
+            var headers: [String: String]? { ["Content-Type": "application/json"] }
+            func body() throws -> Data? { bodyData }
+        }
+
+        /// DELETE /devices/push-token
+        struct Unregister: APICall {
+            let bodyData: Data
+            var path: String { "/devices/push-token" }
+            var method: String { "DELETE" }
+            var headers: [String: String]? { ["Content-Type": "application/json"] }
+            func body() throws -> Data? { bodyData }
         }
     }
+
+    /// Dummy type for 204 No Content
+    private struct EmptyResponse: Decodable {}
 }

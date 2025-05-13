@@ -96,7 +96,7 @@ extension AppEnvironment {
     private static func configuredWebRepositories(session: URLSession) -> DIContainer.WebRepositories {
         let scan = RealScanWebRepository(session: session, baseURL: "")
         let authentication = RealAuthenticationWebRepository(session: session)
-        let pushToken = RealPushTokenWebRepository(session: session)
+        let pushToken = RealPushTokenWebRepository(session: session, baseURL: "")
         return .init(scanWebRepository: scan,
                      authWebRepository: authentication,
                      pushTokenWebRepository: pushToken)
