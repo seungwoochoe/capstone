@@ -9,10 +9,9 @@ import Foundation
 
 protocol PushTokenWebRepository: WebRepository {
     func registerPushToken(_ token: Data) async throws
-    func unregisterPushToken(_ token: Data) async throws
 }
 
-struct RealPushTokenWebRepository: PushTokenWebRepository {
+struct RealPushTokenWebRepository: PushTokenWebRepository, WebRepository {
     
     let session: URLSession
     let baseURL: String
@@ -28,13 +27,6 @@ struct RealPushTokenWebRepository: PushTokenWebRepository {
         let bodyData = try JSONEncoder().encode(payload)
         _ = try await call(endpoint: API.Register(bodyData: bodyData)) as EmptyResponse
     }
-
-    func unregisterPushToken(_ token: Data) async throws {
-        let hexToken = token.map { String(format: "%02x", $0) }.joined()
-        let payload = ["token": hexToken]
-        let bodyData = try JSONEncoder().encode(payload)
-        _ = try await call(endpoint: API.Unregister(bodyData: bodyData)) as EmptyResponse
-    }
 }
 
 private extension RealPushTokenWebRepository {
@@ -44,15 +36,6 @@ private extension RealPushTokenWebRepository {
             let bodyData: Data
             var path: String { "/devices/push-token" }
             var method: String { "POST" }
-            var headers: [String: String]? { ["Content-Type": "application/json"] }
-            func body() throws -> Data? { bodyData }
-        }
-
-        /// DELETE /devices/push-token
-        struct Unregister: APICall {
-            let bodyData: Data
-            var path: String { "/devices/push-token" }
-            var method: String { "DELETE" }
             var headers: [String: String]? { ["Content-Type": "application/json"] }
             func body() throws -> Data? { bodyData }
         }
