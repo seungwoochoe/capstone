@@ -94,6 +94,7 @@ extension Persistence.UploadTask {
             imageURLs: imageURLs,
             createdAt: createdAt,
             retryCount: retryCount,
+            remoteID: remoteID,
             uploadStatus: uploadStatus
         )
     }

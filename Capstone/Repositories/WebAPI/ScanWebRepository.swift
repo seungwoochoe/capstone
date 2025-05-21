@@ -47,7 +47,7 @@ struct RealScanWebRepository: ScanWebRepository {
         let multipart = try MultipartForm.Builder()
             .append(name, named: "name")
             .append(images,
-                    named: "files[]",
+                    named: "files",
                     mimeType: "image/jpeg",
                     filenamePrefix: "image",
                     fileExtension: "jpg")
