@@ -74,13 +74,13 @@ struct RealScanInteractor: ScanInteractor {
         
         do {
             let imageDatas = try uploadTask.imageURLs.map { try Data(contentsOf: $0) }
-            let response = try await webRepository.uploadScan(id: uploadTask.id.uuidString,
-                                                              name: uploadTask.name,
-                                                              images: imageDatas)
+            let _ = try await webRepository.uploadScan(id: uploadTask.id.uuidString,
+                                                       name: uploadTask.name,
+                                                       images: imageDatas)
             mutableTask.uploadStatus = .waitingForResult
             try await uploadTaskPersistenceRepository.update(mutableTask)
         } catch {
-            logger.error("Upload failed: \(error, privacy: .public)")
+            logger.error("Upload failed: \(error)")
             mutableTask.retryCount += 1
             mutableTask.uploadStatus = .failedUpload
             try await uploadTaskPersistenceRepository.update(mutableTask)
@@ -94,7 +94,7 @@ struct RealScanInteractor: ScanInteractor {
         do {
             try await fetchResult(for: scanID)
         } catch {
-            logger.error("Failed to fetch result for scanID \(scanID): \(error, privacy: .public)")
+            logger.error("Failed to fetch result for scanID \(scanID): \(error)")
         }
     }
     
@@ -121,38 +121,35 @@ struct RealScanInteractor: ScanInteractor {
     // MARK: - Private helpers
     
     private func fetchResult(for scanID: String) async throws {
-        // Resolve optional matching UploadTask (by remoteID)
-        let maybeTask = try await uploadTaskPersistenceRepository.fetch().first { $0.id.uuidString == scanID }
+        
+        guard var uploadTask = try await uploadTaskPersistenceRepository.fetch().first(where: { $0.id.uuidString == scanID }) else {
+            logger.info( "No upload task found for scanID \(scanID)")
+            return
+        }
         
         // 1) Ask server for job state
-        let dto = try await webRepository.fetchScan(id: scanID)
+        let response = try await webRepository.fetchScan(id: scanID)
         
-        guard dto.status == "finished" else {
-            if dto.status == "failed" {
-                if var t = maybeTask {
-                    t.uploadStatus = .failedProcessing
-                    try? await uploadTaskPersistenceRepository.update(t)
-                }
+        guard response.status == "finished" else {
+            if response.status == "failed" {
+                uploadTask.uploadStatus = .failedProcessing
+                try? await uploadTaskPersistenceRepository.update(uploadTask)
             }
             return // still processing
         }
         
         // 2) Download the .usdz
-        let localUSDZ = try await webRepository.downloadUSDZ(from: dto.usdzURL)
+        let localUSDZ = try await webRepository.downloadUSDZ(from: response.usdzURL)
         
         // 3) Persist as Scan
-        let scan = Scan(id: UUID(uuidString: dto.id) ?? .init(),
-                        name: dto.name,
+        let scan = Scan(id: uploadTask.id,
+                        name: response.name,
                         usdzURL: localUSDZ,
-                        processedDate: dto.processedAt)
+                        processedDate: response.processedAt)
         try await scanPersistenceRepository.store(scan)
         
-        // 4) Mark the uploadTask as finished (or delete it entirely)
-        if var t = maybeTask {
-            t.uploadStatus = .finished
-            try await uploadTaskPersistenceRepository.update(t)
-            // optionally: try await delete(t) to clean list
-        }
+        // 4) Delete the uploadTask
+        try await delete(uploadTask)
     }
     
     // MARK: File‑system utilities

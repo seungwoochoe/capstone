@@ -23,7 +23,6 @@ enum UploadTaskStatus: Codable, Equatable {
     case waitingForResult
     case failedUpload
     case failedProcessing
-    case finished
     
     var displayString: String {
         switch self {
@@ -37,8 +36,6 @@ enum UploadTaskStatus: Codable, Equatable {
             return "Failed upload"
         case .failedProcessing:
             return "Failed processing"
-        case .finished:
-            return "Finished"
         }
     }
 }

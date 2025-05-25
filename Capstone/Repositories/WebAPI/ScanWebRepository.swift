@@ -9,7 +9,6 @@ import Foundation
 
 // MARK: - DTOs
 
-/// Response returned by POST /scans – delivers the server‑side job identifier
 struct UploadResponse: Decodable {
     let id: String
 }
@@ -45,7 +44,7 @@ struct RealScanWebRepository: ScanWebRepository {
 
     func uploadScan(id: String, name: String, images: [Data]) async throws -> UploadResponse {
         let multipart = try MultipartForm.Builder()
-            .append(id, named: "id")
+            .append(id, named: "i")
             .append(name, named: "name")
             .append(images,
                     named: "files",

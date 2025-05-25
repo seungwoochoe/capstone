@@ -1,7 +1,7 @@
 from fastapi import FastAPI, UploadFile, File, Form
 from fastapi.responses import JSONResponse, FileResponse
 from pathlib import Path
-import uuid, shutil, datetime, asyncio
+import shutil, datetime, asyncio
 
 app = FastAPI()
 ROOT = Path("uploads"); ROOT.mkdir(exist_ok=True)
@@ -22,8 +22,7 @@ async def create_scan(id: str = Form(...),
 status: dict[str, dict] = {}
 
 async def fake_processing(scan_id: str, name: str):
-    await asyncio.sleep(1)                           # pretend work
-    (ROOT / scan_id / "model.usdz").write_bytes(b" ")  # dummy file
+    await asyncio.sleep(1)
     status[scan_id] = dict(
         id = scan_id,
         name = name,
