@@ -17,9 +17,28 @@ enum Permission {
     
     enum Status: Equatable {
         case unknown
+        case notRequested
         case granted
         case denied
     }
+}
+
+// MARK: - SystemNotificationsCenter Protocol & Extension
+
+protocol SystemNotificationsCenter {
+    func currentSettings() async -> SystemNotificationsSettings
+    func requestAuthorization(options: UNAuthorizationOptions) async throws -> Bool
+}
+
+extension UNNotificationSettings: SystemNotificationsSettings { }
+extension UNUserNotificationCenter: SystemNotificationsCenter {
+    func currentSettings() async -> any SystemNotificationsSettings {
+        return await notificationSettings()
+    }
+}
+
+protocol SystemNotificationsSettings {
+    var authorizationStatus: UNAuthorizationStatus { get }
 }
 
 // MARK: - UserPermissionsInteractor Protocol
@@ -27,25 +46,6 @@ enum Permission {
 protocol UserPermissionsInteractor: AnyObject {
     func resolveStatus(for permission: Permission)
     func request(permission: Permission)
-}
-
-// MARK: - SystemNotificationsCenter Protocol & Extension
-
-protocol SystemNotificationsCenter {
-    func currentSettings() async -> UNNotificationSettings
-    func requestAuthorization(options: UNAuthorizationOptions) async throws -> Bool
-}
-
-extension UNUserNotificationCenter: SystemNotificationsCenter {
-    func currentSettings() async -> UNNotificationSettings {
-        await self.notificationSettings()
-    }
-    
-    func requestAuthorization(options: UNAuthorizationOptions) async throws -> Bool {
-        // This call already exists on UNUserNotificationCenter;
-        // wrap it to conform to our protocol.
-        try await self.requestAuthorization(options: options)
-    }
 }
 
 // MARK: - RealUserPermissionsInteractor Implementation
@@ -64,15 +64,17 @@ final class RealUserPermissionsInteractor: UserPermissionsInteractor {
     }
 
     func resolveStatus(for permission: Permission) {
+        let keyPath = AppState.permissionKeyPath(for: permission)
+        let currentStatus = appState[keyPath]
+        guard currentStatus == .unknown else { return }
+        let appState = appState
+        
         switch permission {
         case .pushNotifications:
             Task { @MainActor in
-                let settings = await notificationCenter.currentSettings()
-                // Map UNAuthorizationStatus to your PermissionStatus enum.
-                appState[\.permissions.push] = settings.authorizationStatus.mapToPermissionStatus()
+                appState[keyPath] = await pushNotificationsPermissionStatus()
             }
         case .camera:
-            // Implement camera permission status resolution, e.g., using AVCaptureDevice.authorizationStatus(for:)
             break
         }
     }
@@ -93,7 +95,6 @@ final class RealUserPermissionsInteractor: UserPermissionsInteractor {
                 }
             }
         case .camera:
-            // Implement camera permission request if necessary.
             break
         }
     }
@@ -117,14 +118,25 @@ extension UNAuthorizationStatus {
     }
 }
 
-// MARK: - StubUserPermissionsInteractor Implementation
+private extension RealUserPermissionsInteractor {
+
+    func pushNotificationsPermissionStatus() async -> Permission.Status {
+        return await notificationCenter
+            .currentSettings()
+            .authorizationStatus
+            .mapToPermissionStatus()
+    }
+
+    func requestPushNotificationsPermission() async {
+        let center = notificationCenter
+        let isGranted = (try? await center.requestAuthorization(options: [.alert, .sound])) ?? false
+        appState[\.permissions.push] = isGranted ? .granted : .denied
+    }
+}
+
+// MARK: - StubUserPermissionsInteractor
 
 final class StubUserPermissionsInteractor: UserPermissionsInteractor {
-    func resolveStatus(for permission: Permission) {
-        // No-op stub; you might set the status to granted by default for testing.
-    }
-    
-    func request(permission: Permission) {
-        // No-op stub.
-    }
+    func resolveStatus(for permission: Permission) {}
+    func request(permission: Permission) {}
 }
