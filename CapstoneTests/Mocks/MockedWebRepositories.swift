@@ -18,7 +18,7 @@ class TestWebRepository: WebRepository {
 final class MockedScanWebRepository: TestWebRepository, Mock, ScanWebRepository {
 
     enum Action: Equatable {
-        case uploadScan(name: String, imagesCount: Int)
+        case uploadScan(id: String, name: String, imagesCount: Int)
         case fetchScan(id: String)
         case downloadUSDZ(url: URL)
     }
@@ -29,8 +29,8 @@ final class MockedScanWebRepository: TestWebRepository, Mock, ScanWebRepository 
     var fetchScanResponses: [Result<ScanResponse, Error>] = []
     var downloadUSDZResponses: [Result<URL, Error>] = []
 
-    func uploadScan(name: String, images: [Data]) async throws -> UploadResponse {
-        register(.uploadScan(name: name, imagesCount: images.count))
+    func uploadScan(id: String, name: String, images: [Data]) async throws -> UploadResponse {
+        register(.uploadScan(id: id, name: name, imagesCount: images.count))
         guard !uploadScanResponses.isEmpty else { throw MockError.valueNotSet }
         return try uploadScanResponses.removeFirst().get()
     }

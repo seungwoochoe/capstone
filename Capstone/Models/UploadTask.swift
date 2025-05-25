@@ -14,7 +14,6 @@ struct UploadTask: Identifiable {
     let imageURLs: [URL]
     let createdAt: Date
     var retryCount: Int
-    var remoteID: String?
     var uploadStatus: UploadTaskStatus
 }
 
@@ -54,7 +53,6 @@ extension Persistence {
         var imageURLs: [URL]
         var createdAt: Date
         var retryCount: Int
-        var remoteID: String?
         var uploadStatus: UploadTaskStatus
         
         init(id: UUID,
@@ -62,14 +60,12 @@ extension Persistence {
              imageURLs: [URL],
              createdAt: Date = Date(),
              retryCount: Int = 0,
-             remoteID: String?,
              uploadStatus: UploadTaskStatus = .pendingUpload) {
             self.id = id
             self.name = name
             self.imageURLs = imageURLs
             self.createdAt = createdAt
             self.retryCount = retryCount
-            self.remoteID = remoteID
             self.uploadStatus = uploadStatus
         }
     }
@@ -83,7 +79,6 @@ extension Persistence.UploadTask {
                   imageURLs: uploadTask.imageURLs,
                   createdAt: uploadTask.createdAt,
                   retryCount: uploadTask.retryCount,
-                  remoteID: nil,
                   uploadStatus: uploadTask.uploadStatus)
     }
     
@@ -94,7 +89,6 @@ extension Persistence.UploadTask {
             imageURLs: imageURLs,
             createdAt: createdAt,
             retryCount: retryCount,
-            remoteID: remoteID,
             uploadStatus: uploadStatus
         )
     }

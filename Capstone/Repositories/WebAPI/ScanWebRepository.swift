@@ -26,7 +26,7 @@ struct ScanResponse: Decodable {
 // MARK: - Protocol
 
 protocol ScanWebRepository: WebRepository {
-    func uploadScan(name: String, images: [Data]) async throws -> UploadResponse
+    func uploadScan(id: String, name: String, images: [Data]) async throws -> UploadResponse
     func fetchScan(id: String) async throws -> ScanResponse
     func downloadUSDZ(from url: URL) async throws -> URL
 }
@@ -43,8 +43,9 @@ struct RealScanWebRepository: ScanWebRepository {
         self.baseURL = baseURL
     }
 
-    func uploadScan(name: String, images: [Data]) async throws -> UploadResponse {
+    func uploadScan(id: String, name: String, images: [Data]) async throws -> UploadResponse {
         let multipart = try MultipartForm.Builder()
+            .append(id, named: "id")
             .append(name, named: "name")
             .append(images,
                     named: "files",

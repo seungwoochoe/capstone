@@ -38,6 +38,5 @@ struct UploadTaskIntegrationTests {
             .first{ $0.id == task.id }
         
         #expect(refreshed?.uploadStatus == .waitingForResult)
-        #expect(refreshed?.remoteID != nil)
     }
 }

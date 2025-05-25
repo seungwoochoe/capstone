@@ -37,7 +37,6 @@ final actor RealUploadTaskDBRepository: UploadTaskDBRepository {
         try modelContext.transaction {
             existing.name = uploadTask.name
             existing.retryCount = uploadTask.retryCount
-            existing.remoteID = uploadTask.remoteID
             existing.uploadStatus = uploadTask.uploadStatus
         }
     }

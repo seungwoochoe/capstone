@@ -7,9 +7,10 @@ app = FastAPI()
 ROOT = Path("uploads"); ROOT.mkdir(exist_ok=True)
 
 @app.post("/scans")
-async def create_scan(name: str = Form(...),
+async def create_scan(id: str = Form(...),
+                      name: str = Form(...),
                       files: list[UploadFile] = File(...)):
-    scan_id = str(uuid.uuid4())
+    scan_id = id
     folder = ROOT / scan_id; folder.mkdir()
     for i, f in enumerate(files):
         with (folder / f"{i+1}.jpg").open("wb") as out:

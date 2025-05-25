@@ -61,7 +61,6 @@ struct RealScanInteractor: ScanInteractor {
                                     imageURLs: imageURLs,
                                     createdAt: Date(),
                                     retryCount: 0,
-                                    remoteID: nil,
                                     uploadStatus: .pendingUpload)
         
         try await uploadTaskPersistenceRepository.store(uploadTask)
@@ -75,9 +74,9 @@ struct RealScanInteractor: ScanInteractor {
         
         do {
             let imageDatas = try uploadTask.imageURLs.map { try Data(contentsOf: $0) }
-            let response = try await webRepository.uploadScan(name: uploadTask.name,
+            let response = try await webRepository.uploadScan(id: uploadTask.id.uuidString,
+                                                              name: uploadTask.name,
                                                               images: imageDatas)
-            mutableTask.remoteID = response.id
             mutableTask.uploadStatus = .waitingForResult
             try await uploadTaskPersistenceRepository.update(mutableTask)
         } catch {
@@ -123,7 +122,7 @@ struct RealScanInteractor: ScanInteractor {
     
     private func fetchResult(for scanID: String) async throws {
         // Resolve optional matching UploadTask (by remoteID)
-        let maybeTask = try await uploadTaskPersistenceRepository.fetch().first { $0.remoteID == scanID }
+        let maybeTask = try await uploadTaskPersistenceRepository.fetch().first { $0.id.uuidString == scanID }
         
         // 1) Ask server for job state
         let dto = try await webRepository.fetchScan(id: scanID)
