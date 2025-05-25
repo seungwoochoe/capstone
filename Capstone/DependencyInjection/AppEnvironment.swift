@@ -32,7 +32,7 @@ extension AppEnvironment {
          Alternatively, just copy the code below before the "return" and launch:
          
          DispatchQueue.main.async {
-         deepLinksHandler.open(deepLink: .showCountryFlag(alpha3Code: "AFG"))
+         deepLinksHandler.open(deepLink: .showScan(scanID: "Scan.sample.id.uuidString"))
          }
          */
         

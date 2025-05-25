@@ -18,7 +18,7 @@ struct AppState: Equatable {
 
 extension AppState {
     struct ViewRouting: Equatable {
-        var selectedScanID: String? = nil
+        var selectedScanID: UUID? = nil
     }
 }
 

@@ -6,6 +6,7 @@
 //
 
 import Foundation
+import OSLog
 
 enum DeepLink: Equatable {
     
@@ -36,6 +37,8 @@ protocol DeepLinksHandler {
 struct RealDeepLinksHandler: DeepLinksHandler {
     
     private let container: DIContainer
+    private let logger = Logger(subsystem: Bundle.main.bundleIdentifier!,
+                                category: #file)
     
     init(diContainer: DIContainer) {
         self.container = diContainer
@@ -46,15 +49,14 @@ struct RealDeepLinksHandler: DeepLinksHandler {
         case .showScan(let scanID):
             let routeToScan = {
                 self.container.appState.bulkUpdate {
+                    guard let scanID = UUID(uuidString: scanID) else {
+                        logger.error("Failed to parse scanID: \(scanID)")
+                        return
+                    }
                     $0.routing.selectedScanID = scanID
                 }
             }
             
-            /*
-             SwiftUI is unable to perform complex navigation involving
-             simultaneous dismissal or older screens and presenting new ones.
-             A work around is to perform the navigation in two steps:
-             */
             let defaultRouting = AppState.ViewRouting()
             if container.appState.value.routing != defaultRouting {
                 self.container.appState[\.routing] = defaultRouting
