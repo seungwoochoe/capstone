@@ -76,6 +76,11 @@ struct RealSystemEventsHandler: SystemEventsHandler {
     func sceneDidBecomeActive() {
         container.appState[\.system.isActive] = true
         container.interactors.userPermissions.resolveStatus(for: .pushNotifications)
+        container.interactors.userPermissions.resolveStatus(for: .camera)
+        
+        if container.appState[\.permissions].camera != .granted {
+            container.interactors.userPermissions.request(permission: .camera)
+        }
     }
 
     func sceneWillResignActive() {
