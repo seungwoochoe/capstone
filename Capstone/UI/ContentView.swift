@@ -19,7 +19,7 @@ struct ContentView: View {
     @State private var searchIsPresented: Bool = false
     @State private var searchText: String = ""
     @State private var showingScanner: Bool = false
-    @State private var showingAbout: Bool = false
+    @State private var showingSettings: Bool = false
     @State private var selected: Scan? = nil
     
     var filteredUploadTasks: [UploadTask] {
@@ -99,18 +99,11 @@ struct ContentView: View {
                 .navigationTitle("3D Room Scanner")
                 .navigationBarTitleDisplayMode(.automatic)
                 .toolbar {
-                    ToolbarItem(placement: .navigationBarTrailing) {
-                        HStack(spacing: 16) {
-                            Menu {
-                                Button("About") {
-                                    showingAbout = true
-                                }
-                                Button("Log Out") {
-                                    logOutUser()
-                                }
-                            } label: {
-                                Image(systemName: "ellipsis.circle")
-                            }
+                    ToolbarItem {
+                        Button {
+                            showingSettings = true
+                        } label: {
+                            Image(systemName: "gear")
                         }
                     }
                 }
@@ -146,8 +139,8 @@ struct ContentView: View {
             } content: {
                 RoomScannerView()
             }
-            .sheet(isPresented: $showingAbout) {
-                AboutView(showingAbout: $showingAbout)
+            .sheet(isPresented: $showingSettings) {
+                SettingsView(showingSettings: $showingSettings)
             }
         }
     }

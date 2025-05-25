@@ -9,7 +9,7 @@ import SwiftUI
 
 struct AcknowledgementsView: View {
     
-    @Binding var showingAbout: Bool
+    @Binding var showingSettings: Bool
     
     private var licenseItems: [(header: String, content: String)] {
         guard let urls = Bundle.main.urls(forResourcesWithExtension: "LICENSE", subdirectory: nil) else { return [] }
@@ -51,7 +51,7 @@ struct AcknowledgementsView: View {
             .navigationBarTitleDisplayMode(.large)
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) {
-                    Button("Done") { showingAbout = false }
+                    Button("Done") { showingSettings = false }
                         .font(.body).bold()
                 }
             }
@@ -70,5 +70,5 @@ extension String {
 }
 
 #Preview {
-    AcknowledgementsView(showingAbout: .constant(true))
+    AcknowledgementsView(showingSettings: .constant(true))
 }
