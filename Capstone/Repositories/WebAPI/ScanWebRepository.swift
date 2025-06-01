@@ -7,59 +7,95 @@
 
 import Foundation
 
-// MARK: - DTOs
+// MARK: - DTOs ---------------------------------------------------------------
 
-struct UploadResponse: Decodable {
-    let id: String
+struct PresignedURLsResponse: Decodable {
+    let presigned: [URL]
 }
 
-/// Response returned by GET /scans/{id}
-struct ScanResponse: Decodable {
+struct TaskStatusResponse: Decodable {
     let id: String
-    let name: String
-    let usdzURL: URL
-    let processedAt: Date
-    let status: String
+    let status: String               // "pending-upload" | "ready-for-processing" | "finished" | "failed"
+    let usdzURL: URL?                // present only when status == "finished"
+    let processedAt: Date?           // optional ISO-8601 timestamp
+    
+    enum CodingKeys: String, CodingKey {
+        case id, status, usdzURL = "usdzUrl", processedAt
+    }
 }
 
-// MARK: - Protocol
+/// Generic `{ "ok": true }`
+struct OKResponse: Decodable { let ok: Bool }
+
+// MARK: - Protocol ----------------------------------------------------------
 
 protocol ScanWebRepository: WebRepository {
-    func uploadScan(id: String, name: String, images: [Data]) async throws -> UploadResponse
-    func fetchScan(id: String) async throws -> ScanResponse
+    /// Uploads a batch of JPEGs and notifies the server that the task is complete.
+    /// – Parameter id: UUID string chosen by the app (matches DynamoDB `id` key)
+    /// – Returns: `true` when the server accepted the batch
+    func uploadScan(id: String, images: [Data]) async throws -> Bool
+    
+    /// Poll the backend for task status (and .usdz link when ready)
+    func fetchTask(id: String) async throws -> TaskStatusResponse
+    
+    /// Download the finished .usdz model to a local temp file
     func downloadUSDZ(from url: URL) async throws -> URL
 }
 
-// MARK: - RealScanWebRepository
+// MARK: - Real implementation ----------------------------------------------
 
 struct RealScanWebRepository: ScanWebRepository {
-
+    
     let session: URLSession
-    let baseURL: String
-
+    let baseURL: String          // e.g. "https://api.example.com"
+    
     init(session: URLSession = .shared, baseURL: String) {
         self.session = session
         self.baseURL = baseURL
     }
-
-    func uploadScan(id: String, name: String, images: [Data]) async throws -> UploadResponse {
-        let multipart = try MultipartForm.Builder()
-            .append(id, named: "i")
-            .append(name, named: "name")
-            .append(images,
-                    named: "files",
-                    mimeType: "image/jpeg",
-                    filenamePrefix: "image",
-                    fileExtension: "jpg")
-            .build()
-
-        return try await call(endpoint: API.UploadScan(payload: multipart))
+    
+    // MARK: Upload ----------------------------------------------------------
+    
+    func uploadScan(id: String, images: [Data]) async throws -> Bool {
+        
+        // ── STEP 1 ──────────────────────────────────────────────────────────────
+        let presignedResponse: PresignedURLsResponse = try await call(
+            endpoint: API.CreateUploadUrls(taskID: id, count: images.count)
+        )
+        let presigned = presignedResponse.presigned           // [URL]
+        
+        guard presigned.count == images.count else {
+            throw APIError.unexpectedResponse
+        }
+        
+        // ── STEP 2 ──────────────────────────────────────────────────────────────
+        try await withThrowingTaskGroup(of: Void.self) { group in
+            for (idx, url) in presigned.enumerated() {
+                let data = images[idx]
+                group.addTask {
+                    var req = URLRequest(url: url)
+                    req.httpMethod = "PUT"
+                    req.addValue("image/jpeg", forHTTPHeaderField: "Content-Type")
+                    _ = try await session.upload(for: req, from: data).1
+                }
+            }
+            try await group.waitForAll()
+        }
+        
+        // ── STEP 3 ──────────────────────────────────────────────────────────────
+        let okResponse: OKResponse = try await call(
+            endpoint: API.UploadComplete(taskID: id)
+        )
+        
+        return okResponse.ok
     }
-
-    func fetchScan(id: String) async throws -> ScanResponse {
-        try await call(endpoint: API.ScanDetail(id: id))
+    
+    // ----------------------------------------------------------------------
+    
+    func fetchTask(id: String) async throws -> TaskStatusResponse {
+        try await call(endpoint: API.TaskDetail(id: id))
     }
-
+    
     func downloadUSDZ(from url: URL) async throws -> URL {
         let (tmpURL, _) = try await session.download(from: url)
         let dst = FileManager.default.temporaryDirectory.appendingPathComponent(url.lastPathComponent)
@@ -69,27 +105,41 @@ struct RealScanWebRepository: ScanWebRepository {
     }
 }
 
-// MARK: - Private Endpoint definitions
+// MARK: - Endpoint definitions ---------------------------------------------
 
 private extension RealScanWebRepository {
-
+    
     enum API {
-        /// POST /scans – multipart
-        struct UploadScan: APICall {
-            let payload: MultipartPayload
-
-            var path: String { "/scans" }
-            var method: String { "POST" }
-            var headers: [String : String]? {
-                ["Content-Type": payload.contentType]
+        
+        // 1) POST /upload-urls  ------------------------------------------------
+        struct CreateUploadUrls: APICall, Encodable {
+            let taskId: String
+            let imageCount: Int
+            
+            init(taskID: String, count: Int) {
+                self.taskId = taskID
+                self.imageCount = count
             }
-            func body() throws -> Data? { payload.data }
+            
+            var path: String { "/upload-urls" }
+            var method: String { "POST" }
+            var headers: [String : String]? { ["Content-Type": "application/json"] }
+            func body() throws -> Data? { try JSONEncoder().encode(self) }
         }
-
-        /// GET /scans/{id}
-        struct ScanDetail: APICall {
+        
+        // 2) POST /tasks/{id}/complete  ---------------------------------------
+        struct UploadComplete: APICall {
+            let taskID: String
+            var path: String { "/tasks/\(taskID)/complete" }
+            var method: String { "POST" }
+            var headers: [String : String]? { ["Content-Type": "application/json"] }
+            func body() throws -> Data? { Data() }          // empty body
+        }
+        
+        // GET /tasks/{id}  -----------------------------------------------------
+        struct TaskDetail: APICall {
             let id: String
-            var path: String { "/scans/\(id)" }
+            var path: String { "/tasks/\(id)" }
             var method: String { "GET" }
             var headers: [String : String]? { nil }
             func body() throws -> Data? { nil }

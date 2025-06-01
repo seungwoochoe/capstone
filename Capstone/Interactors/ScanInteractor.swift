@@ -74,9 +74,10 @@ struct RealScanInteractor: ScanInteractor {
         
         do {
             let imageDatas = try uploadTask.imageURLs.map { try Data(contentsOf: $0) }
-            let _ = try await webRepository.uploadScan(id: uploadTask.id.uuidString,
-                                                       name: uploadTask.name,
-                                                       images: imageDatas)
+            
+            _ = try await webRepository.uploadScan(id: uploadTask.id.uuidString,
+                                                   images: imageDatas)
+            
             mutableTask.uploadStatus = .waitingForResult
             try await uploadTaskPersistenceRepository.update(mutableTask)
         } catch {
@@ -122,30 +123,32 @@ struct RealScanInteractor: ScanInteractor {
     
     private func fetchResult(for scanID: String) async throws {
         
-        guard var uploadTask = try await uploadTaskPersistenceRepository.fetch().first(where: { $0.id.uuidString == scanID }) else {
-            logger.info( "No upload task found for scanID \(scanID)")
+        guard var uploadTask = try await uploadTaskPersistenceRepository
+            .fetch().first(where: { $0.id.uuidString == scanID }) else {
+            logger.info("No upload task found for scanID \(scanID)")
             return
         }
         
-        // 1) Ask server for job state
-        let response = try await webRepository.fetchScan(id: scanID)
+        // 1) Poll task state
+        let response = try await webRepository.fetchTask(id: scanID)
         
         guard response.status == "finished" else {
             if response.status == "failed" {
                 uploadTask.uploadStatus = .failedProcessing
                 try? await uploadTaskPersistenceRepository.update(uploadTask)
             }
-            return // still processing
+            return      // still processing
         }
         
         // 2) Download the .usdz
-        let localUSDZ = try await webRepository.downloadUSDZ(from: response.usdzURL)
+        guard let usdzURL = response.usdzURL else { return }
+        let localUSDZ = try await webRepository.downloadUSDZ(from: usdzURL)
         
         // 3) Persist as Scan
         let scan = Scan(id: uploadTask.id,
-                        name: response.name,
+                        name: uploadTask.name,               // keep local name
                         usdzURL: localUSDZ,
-                        processedDate: response.processedAt)
+                        processedDate: response.processedAt ?? Date())
         try await scanPersistenceRepository.store(scan)
         
         // 4) Delete the uploadTask
