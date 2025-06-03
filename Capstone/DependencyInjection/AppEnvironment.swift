@@ -39,11 +39,12 @@ extension AppEnvironment {
         
         let appState = Store<AppState>(AppState())
         let session = configuredURLSession()
+        let baseURL = "https://gqr99zaoig.execute-api.ap-northeast-2.amazonaws.com"
         let fileManager = configuredFileManager()
         let keychainService = configuredKeychainService()   // <— This is our new reference
         
         let modelContainer = configuredModelContainer()
-        let webRepositories = configuredWebRepositories(session: session)
+        let webRepositories = configuredWebRepositories(session: session, baseURL: baseURL)
         let dbRepositories = configuredDBRepositories(modelContainer: modelContainer)
         
         let interactors = configuredInteractors(
@@ -105,10 +106,10 @@ extension AppEnvironment {
         return RealKeychainService()
     }
     
-    private static func configuredWebRepositories(session: URLSession) -> DIContainer.WebRepositories {
-        let scan = RealScanWebRepository(session: session, baseURL: "")
-        let authentication = RealAuthenticationWebRepository(session: session, baseURL: "")
-        let pushToken = RealPushTokenWebRepository(session: session, baseURL: "")
+    private static func configuredWebRepositories(session: URLSession, baseURL: String) -> DIContainer.WebRepositories {
+        let scan = RealScanWebRepository(session: session, baseURL: baseURL)
+        let authentication = RealAuthenticationWebRepository(session: session, baseURL: baseURL)
+        let pushToken = RealPushTokenWebRepository(session: session, baseURL: baseURL)
         return .init(scanWebRepository: scan,
                      authWebRepository: authentication,
                      pushTokenWebRepository: pushToken)
