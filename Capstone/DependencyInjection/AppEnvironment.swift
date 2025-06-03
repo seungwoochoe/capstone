@@ -15,6 +15,7 @@ struct AppEnvironment {
     let diContainer: DIContainer
     let modelContainer: ModelContainer
     let systemEventsHandler: SystemEventsHandler
+    let keychainService: KeychainService
 }
 
 extension AppEnvironment {
@@ -39,29 +40,40 @@ extension AppEnvironment {
         let appState = Store<AppState>(AppState())
         let session = configuredURLSession()
         let fileManager = configuredFileManager()
-        let keychainService = configuredKeychainService()
-        let modelContainer = configuredModelContainer()
+        let keychainService = configuredKeychainService()   // <— This is our new reference
         
+        let modelContainer = configuredModelContainer()
         let webRepositories = configuredWebRepositories(session: session)
         let dbRepositories = configuredDBRepositories(modelContainer: modelContainer)
-        let interactors = configuredInteractors(appState: appState,
-                                                webRepositories: webRepositories,
-                                                dbRepositories: dbRepositories,
-                                                fileManager: fileManager,
-                                                keychainService: keychainService)
-
+        
+        let interactors = configuredInteractors(
+            appState: appState,
+            webRepositories: webRepositories,
+            dbRepositories: dbRepositories,
+            fileManager: fileManager,
+            keychainService: keychainService     // ← pass it here so AuthInteractor can save/delete
+        )
+        
         let diContainer = DIContainer(appState: appState, interactors: interactors)
         let deepLinksHandler = RealDeepLinksHandler(diContainer: diContainer)
-        let pushNotificationsHandler = RealPushNotificationsHandler(scanInteractor: interactors.scanInteractor, deepLinksHandler: deepLinksHandler)
-        let systemEventsHandler = RealSystemEventsHandler(container: diContainer,
-                                                          deepLinksHandler: deepLinksHandler,
-                                                          pushNotificationsHandler: pushNotificationsHandler,
-                                                          pushTokenWebRepository: webRepositories.pushTokenWebRepository)
-
-        return AppEnvironment(isRunningTests: ProcessInfo.processInfo.isRunningTests,
-                              diContainer: diContainer,
-                              modelContainer: modelContainer,
-                              systemEventsHandler: systemEventsHandler)
+        let pushNotificationsHandler = RealPushNotificationsHandler(
+            scanInteractor: interactors.scanInteractor,
+            deepLinksHandler: deepLinksHandler
+        )
+        let systemEventsHandler = RealSystemEventsHandler(
+            container: diContainer,
+            deepLinksHandler: deepLinksHandler,
+            pushNotificationsHandler: pushNotificationsHandler,
+            pushTokenWebRepository: webRepositories.pushTokenWebRepository
+        )
+        
+        return AppEnvironment(
+            isRunningTests: ProcessInfo.processInfo.isRunningTests,
+            diContainer: diContainer,
+            modelContainer: modelContainer,
+            systemEventsHandler: systemEventsHandler,
+            keychainService: keychainService
+        )
     }
     
     private static func configuredURLSession() -> URLSession {
@@ -95,7 +107,7 @@ extension AppEnvironment {
     
     private static func configuredWebRepositories(session: URLSession) -> DIContainer.WebRepositories {
         let scan = RealScanWebRepository(session: session, baseURL: "")
-        let authentication = RealAuthenticationWebRepository(session: session)
+        let authentication = RealAuthenticationWebRepository(session: session, baseURL: "")
         let pushToken = RealPushTokenWebRepository(session: session, baseURL: "")
         return .init(scanWebRepository: scan,
                      authWebRepository: authentication,

@@ -17,8 +17,14 @@ protocol AuthWebRepository: WebRepository {
 }
 
 struct RealAuthenticationWebRepository: AuthWebRepository {
+    
     let session: URLSession
-    let baseURL: String = "https://example.com/api/auth"
+    let baseURL: String
+
+    init(session: URLSession = .shared, baseURL: String) {
+        self.session = session
+        self.baseURL = baseURL
+    }
 
     func authenticate(with appleToken: String) async throws -> AuthResponse {
         return try await call(endpoint: API.authenticate(appleToken: appleToken))
@@ -38,11 +44,22 @@ extension RealAuthenticationWebRepository.API: APICall {
             return "/signin?token=\(appleToken)"
         }
     }
-    var method: String { "POST" }
+
+    var method: String {
+        switch self {
+        case .authenticate:
+            return "POST"
+        }
+    }
+
     var headers: [String: String]? {
         ["Content-Type": "application/json"]
     }
+
     func body() throws -> Data? {
-        return nil  // Or serialize a JSON payload if needed.
+        switch self {
+        case .authenticate:
+            return nil
+        }
     }
 }
