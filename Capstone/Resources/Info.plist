@@ -12,5 +12,16 @@
         </dict>
       </dict>
     </dict>
+    <key>CFBundleURLTypes</key>
+    <array>
+      <dict>
+        <key>CFBundleURLName</key>
+        <string>com.seungwoochoe.capstone</string>
+        <key>CFBundleURLSchemes</key>
+        <array>
+          <string>capstone</string>
+        </array>
+      </dict>
+    </array>
 </dict>
 </plist>
