@@ -7,6 +7,7 @@
 
 import UIKit
 import Combine
+import OSLog
 
 @MainActor
 protocol SystemEventsHandler {
@@ -18,27 +19,28 @@ protocol SystemEventsHandler {
 }
 
 struct RealSystemEventsHandler: SystemEventsHandler {
-
+    
     let container: DIContainer
     let deepLinksHandler: DeepLinksHandler
     let pushNotificationsHandler: PushNotificationsHandler
     let pushTokenWebRepository: PushTokenWebRepository
+    private let logger = Logger(subsystem: Bundle.main.bundleIdentifier!, category: #file)
     private let cancelBag = CancelBag()
-
+    
     init(container: DIContainer,
          deepLinksHandler: DeepLinksHandler,
          pushNotificationsHandler: PushNotificationsHandler,
          pushTokenWebRepository: PushTokenWebRepository) {
-
+        
         self.container = container
         self.deepLinksHandler = deepLinksHandler
         self.pushNotificationsHandler = pushNotificationsHandler
         self.pushTokenWebRepository = pushTokenWebRepository
-
+        
         installKeyboardHeightObserver()
         installPushNotificationsSubscriberOnLaunch()
     }
-
+    
     private func installKeyboardHeightObserver() {
         let appState = container.appState
         NotificationCenter.default.keyboardHeightPublisher
@@ -47,7 +49,7 @@ struct RealSystemEventsHandler: SystemEventsHandler {
             }
             .store(in: cancelBag)
     }
-
+    
     private func installPushNotificationsSubscriberOnLaunch() {
         weak var permissions = container.interactors.userPermissions
         container.appState
@@ -55,24 +57,24 @@ struct RealSystemEventsHandler: SystemEventsHandler {
             .first(where: { $0 != .unknown })
             .sink { status in
                 if status == .granted {
-                    // If the permission was granted on previous launch
-                    // requesting the push token again:
+                    // If the permission was granted on a previous launch,
+                    // request the push token again:
                     permissions?.request(permission: .pushNotifications)
                 }
             }
             .store(in: cancelBag)
     }
-
+    
     func sceneOpenURLContexts(_ urlContexts: Set<UIOpenURLContext>) {
         guard let url = urlContexts.first?.url else { return }
         handle(url: url)
     }
-
+    
     private func handle(url: URL) {
         guard let deepLink = DeepLink(url: url) else { return }
         deepLinksHandler.open(deepLink: deepLink)
     }
-
+    
     func sceneDidBecomeActive() {
         container.appState[\.system.isActive] = true
         container.interactors.userPermissions.resolveStatus(for: .pushNotifications)
@@ -81,17 +83,43 @@ struct RealSystemEventsHandler: SystemEventsHandler {
         if container.appState[\.permissions].camera != .granted {
             container.interactors.userPermissions.request(permission: .camera)
         }
+        if container.appState[\.permissions].push == .granted {
+            UIApplication.shared.registerForRemoteNotifications()
+        }
     }
-
+    
     func sceneWillResignActive() {
         container.appState[\.system.isActive] = false
     }
-
+    
     func handlePushRegistration(result: Result<Data, Error>) {
-
+        logger.log("Handling push registration")
+        switch result {
+        case .success(let deviceToken):
+            // Send deviceToken to your backend to get an endpointArn
+            Task {
+                do {
+                    let endpointArn =
+                    try await pushTokenWebRepository.registerPushToken(deviceToken)
+                    // Persist the endpointArn locally (UserDefaults, Keychain, etc.).
+                    UserDefaults.standard.set(endpointArn, forKey: "pushEndpointArn")
+                } catch {
+                    // Log or handle error
+                    logger.error("Failed to register push token: \(error)")
+                }
+            }
+        case .failure(let error):
+            // The system failed to register for remote notifications
+            logger.error("Did fail to register for remote notifications: \(error)")
+        }
     }
-
+    
     func appDidReceiveRemoteNotification(payload: [AnyHashable: Any]) async -> UIBackgroundFetchResult {
+        logger.log("App did receive remote notifictaion: \(payload)")
+        if let taskId = payload["taskId"] as? String {
+            await container.interactors.scanInteractor.handlePush(scanID: taskId)
+            return .newData
+        }
         return .noData
     }
 }

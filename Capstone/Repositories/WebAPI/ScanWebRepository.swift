@@ -24,7 +24,6 @@ struct TaskStatusResponse: Decodable {
     }
 }
 
-/// Generic `{ "ok": true }`
 struct OKResponse: Decodable { let ok: Bool }
 
 // MARK: - Protocol ----------------------------------------------------------
@@ -83,8 +82,14 @@ struct RealScanWebRepository: ScanWebRepository {
         }
         
         // ── STEP 3 ──────────────────────────────────────────────────────────────
+        // Retrieve stored endpointArn from UserDefaults
+        guard let endpointArn = UserDefaults.standard.string(forKey: "pushEndpointArn") else {
+            // If we don’t have a saved endpointArn, fail early
+            throw APIError.unexpectedResponse
+        }
+        
         let okResponse: OKResponse = try await call(
-            endpoint: API.UploadComplete(taskID: id)
+            endpoint: API.UploadComplete(taskID: id, endpointArn: endpointArn)
         )
         
         return okResponse.ok
@@ -130,13 +135,20 @@ private extension RealScanWebRepository {
         // 2) POST /tasks/{id}/complete  ---------------------------------------
         struct UploadComplete: APICall {
             let taskID: String
+            let endpointArn: String
+            
             var path: String { "/tasks/\(taskID)/complete" }
             var method: String { "POST" }
             var headers: [String : String]? { ["Content-Type": "application/json"] }
-            func body() throws -> Data? { Data() }          // empty body
+            
+            func body() throws -> Data? {
+                // We send { "snsEndpointArn": "<endpointArn>" }
+                let payload: [String: String] = ["snsEndpointArn": endpointArn]
+                return try JSONEncoder().encode(payload)
+            }
         }
         
-        // GET /tasks/{id}  -----------------------------------------------------
+        // 3) GET /tasks/{id}  -----------------------------------------------------
         struct TaskDetail: APICall {
             let id: String
             var path: String { "/tasks/\(id)" }
