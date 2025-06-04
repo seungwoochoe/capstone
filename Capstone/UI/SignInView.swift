@@ -26,14 +26,29 @@ final class WebAuthContextProvider: NSObject,
 struct SignInView: View {
     
     @Environment(\.injected) private var injected
-    @State private var authSession:      ASWebAuthenticationSession?
+    @State private var authSession: ASWebAuthenticationSession?
     @State private var contextProvider = WebAuthContextProvider()
     
     private let logger = Logger(subsystem: Bundle.main.bundleIdentifier!,
                                 category: #file)
     
     var body: some View {
-        Button("Sign in with Apple") { startHostedUISignIn() }
+        Button(action: startHostedUISignIn) {
+            HStack(spacing: 8) {
+                Image(systemName: "apple.logo")
+                    .resizable()
+                    .scaledToFit()
+                    .frame(width: 20, height: 20)
+                
+                Text("Sign in with Apple")
+                    .font(.system(size: 16, weight: .medium))
+            }
+            .foregroundColor(.white)
+            .frame(maxWidth: .infinity, minHeight: 44)
+            .background(Color.black)
+            .cornerRadius(8)
+        }
+        .padding(.horizontal)
     }
     
     private func startHostedUISignIn() {
@@ -78,13 +93,6 @@ struct SignInView: View {
         authSession?.presentationContextProvider = contextProvider
         authSession?.prefersEphemeralWebBrowserSession = true  // optional
         authSession?.start()
-    }
-}
-
-private extension URL {
-    func queryItem(named name: String) -> String? {
-        URLComponents(url: self, resolvingAgainstBaseURL: false)?
-            .queryItems?.first(where: { $0.name == name })?.value
     }
 }
 

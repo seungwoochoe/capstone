@@ -151,10 +151,3 @@ private extension Notification {
             .cgRectValue.height ?? 0
     }
 }
-
-private extension URL {
-    func queryItem(named name: String) -> String? {
-        URLComponents(url: self, resolvingAgainstBaseURL: false)?
-            .queryItems?.first(where: { $0.name == name })?.value
-    }
-}

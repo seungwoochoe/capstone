@@ -74,6 +74,13 @@ extension ModelContext {
     }
 }
 
+extension URL {
+    func queryItem(named name: String) -> String? {
+        URLComponents(url: self, resolvingAgainstBaseURL: false)?
+            .queryItems?.first(where: { $0.name == name })?.value
+    }
+}
+
 // MARK: - View Inspection helper
 
 internal final class Inspection<V> {
