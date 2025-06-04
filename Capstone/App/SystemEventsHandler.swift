@@ -88,9 +88,14 @@ struct RealSystemEventsHandler: SystemEventsHandler {
         container.interactors.userPermissions.resolveStatus(for: .pushNotifications)
         container.interactors.userPermissions.resolveStatus(for: .camera)
         
+        if container.appState[\.permissions].push != .granted {
+            container.interactors.userPermissions.request(permission: .pushNotifications)
+        }
+        
         if container.appState[\.permissions].camera != .granted {
             container.interactors.userPermissions.request(permission: .camera)
         }
+        
         if container.appState[\.permissions].push == .granted {
             UIApplication.shared.registerForRemoteNotifications()
         }
@@ -101,23 +106,20 @@ struct RealSystemEventsHandler: SystemEventsHandler {
     }
     
     func handlePushRegistration(result: Result<Data, Error>) {
-        logger.log("Handling push registration")
+        logger.log("Handling push registration…")
         switch result {
         case .success(let deviceToken):
             // Send deviceToken to the backend to get an endpointArn
             Task {
                 do {
-                    let endpointArn =
-                    try await pushTokenWebRepository.registerPushToken(deviceToken)
+                    let endpointArn = try await pushTokenWebRepository.registerPushToken(deviceToken)
                     Defaults[.pushEndpointArn] = endpointArn
                     logger.debug("Successfully registered push token. EndpointArn: \(endpointArn)")
                 } catch {
-                    // Log or handle error
                     logger.error("Failed to register push token: \(error)")
                 }
             }
         case .failure(let error):
-            // The system failed to register for remote notifications
             logger.error("Did fail to register for remote notifications: \(error)")
         }
     }

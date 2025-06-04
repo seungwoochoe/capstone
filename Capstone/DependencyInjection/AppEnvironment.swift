@@ -36,7 +36,7 @@ extension AppEnvironment {
          }
          */
         
-        let baseURL = "https://gqr99zaoig.execute-api.ap-northeast-2.amazonaws.com"
+        let baseURL = "https://0lin00e8oe.execute-api.ap-northeast-2.amazonaws.com"
         let userPoolDomain = "capstone-auth.auth.ap-northeast-2.amazoncognito.com"
         let clientId = "4oliffdd79l5mmkibr801lcn16"
         let redirectUri = "capstone://auth/callback"
