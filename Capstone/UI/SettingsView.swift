@@ -9,6 +9,7 @@ import SwiftUI
 
 struct SettingsView: View {
     
+    @Environment(\.injected) private var injected
     @Binding var showingSettings: Bool
     
     var body: some View {
@@ -16,7 +17,9 @@ struct SettingsView: View {
             Form {
                 Section {
                     Button("Log Out", role: .destructive) {
-                        
+                        Task {
+                            try await injected.interactors.authInteractor.signOut()
+                        }
                     }
                 } header: {
                     HStack {

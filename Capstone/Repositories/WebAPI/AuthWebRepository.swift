@@ -22,7 +22,7 @@ struct CognitoTokenResponse: Decodable {
 
 // MARK: – Public API ----------------------------------------------------
 protocol AuthWebRepository: WebRepository {
-    /// Takes the *authorization-code* returned by the Hosted-UI redirect
+    func makeHostedUISignInURL(state: String, nonce: String) -> URL
     func exchange(code: String) async throws -> AuthResponse
 }
 
@@ -30,9 +30,26 @@ struct RealAuthenticationWebRepository: AuthWebRepository {
     
     let session: URLSession
     let baseURL: String
-    let userPoolDomain = "capstone-auth.auth.ap-northeast-2.amazoncognito.com"
-    let clientId = "4oliffdd79l5mmkibr801lcn16"
-    let redirectUri = "capstone://auth/callback"
+    let userPoolDomain: String
+    let clientId: String
+    let redirectUri: String
+    
+    func makeHostedUISignInURL(state: String, nonce: String) -> URL {
+        var comps = URLComponents()
+        comps.scheme = "https"
+        comps.host   = userPoolDomain
+        comps.path   = "/oauth2/authorize"
+        comps.queryItems = [
+            .init(name: "response_type",     value: "code"),
+            .init(name: "client_id",         value: clientId),
+            .init(name: "redirect_uri",      value: redirectUri),
+            .init(name: "scope",             value: "openid email profile"),
+            .init(name: "identity_provider", value: "SignInWithApple"),
+            .init(name: "state",             value: state),
+            .init(name: "nonce",             value: nonce)
+        ]
+        return comps.url!
+    }
 
     func exchange(code: String) async throws -> AuthResponse {
         let body =

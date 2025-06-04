@@ -37,14 +37,22 @@ extension AppEnvironment {
          }
          */
         
+        let baseURL = "https://gqr99zaoig.execute-api.ap-northeast-2.amazonaws.com"
+        let userPoolDomain = "capstone-auth.auth.ap-northeast-2.amazoncognito.com"
+        let clientId = "4oliffdd79l5mmkibr801lcn16"
+        let redirectUri = "capstone://auth/callback"
+        
         let appState = Store<AppState>(AppState())
         let session = configuredURLSession()
-        let baseURL = "https://gqr99zaoig.execute-api.ap-northeast-2.amazonaws.com"
         let fileManager = configuredFileManager()
         let keychainService = configuredKeychainService()   // <— This is our new reference
         
         let modelContainer = configuredModelContainer()
-        let webRepositories = configuredWebRepositories(session: session, baseURL: baseURL)
+        let webRepositories = configuredWebRepositories(session: session,
+                                                        baseURL: baseURL,
+                                                        userPoolDomain: userPoolDomain,
+                                                        clientId: clientId,
+                                                        redirectUri: redirectUri)
         let dbRepositories = configuredDBRepositories(modelContainer: modelContainer)
         
         let interactors = configuredInteractors(
@@ -106,9 +114,9 @@ extension AppEnvironment {
         return RealKeychainService()
     }
     
-    private static func configuredWebRepositories(session: URLSession, baseURL: String) -> DIContainer.WebRepositories {
+    private static func configuredWebRepositories(session: URLSession, baseURL: String, userPoolDomain: String, clientId: String, redirectUri: String) -> DIContainer.WebRepositories {
         let scan = RealScanWebRepository(session: session, baseURL: baseURL)
-        let authentication = RealAuthenticationWebRepository(session: session, baseURL: baseURL)
+        let authentication = RealAuthenticationWebRepository(session: session, baseURL: baseURL, userPoolDomain: userPoolDomain, clientId: clientId, redirectUri: redirectUri)
         let pushToken = RealPushTokenWebRepository(session: session, baseURL: baseURL)
         return .init(scanWebRepository: scan,
                      authWebRepository: authentication,
