@@ -104,13 +104,13 @@ struct RealSystemEventsHandler: SystemEventsHandler {
         logger.log("Handling push registration")
         switch result {
         case .success(let deviceToken):
-            // Send deviceToken to your backend to get an endpointArn
+            // Send deviceToken to the backend to get an endpointArn
             Task {
                 do {
                     let endpointArn =
                     try await pushTokenWebRepository.registerPushToken(deviceToken)
-                    // Persist the endpointArn locally (UserDefaults, Keychain, etc.).
-                    UserDefaults.standard.set(endpointArn, forKey: "pushEndpointArn")
+                    Defaults[.pushEndpointArn] = endpointArn
+                    logger.debug("Successfully registered push token. EndpointArn: \(endpointArn)")
                 } catch {
                     // Log or handle error
                     logger.error("Failed to register push token: \(error)")

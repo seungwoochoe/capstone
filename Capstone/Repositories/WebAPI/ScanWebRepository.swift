@@ -26,34 +26,27 @@ struct TaskStatusResponse: Decodable {
 
 struct OKResponse: Decodable { let ok: Bool }
 
-// MARK: - Protocol ----------------------------------------------------------
+// MARK: - ScanWebRepository
 
 protocol ScanWebRepository: WebRepository {
-    /// Uploads a batch of JPEGs and notifies the server that the task is complete.
-    /// – Parameter id: UUID string chosen by the app (matches DynamoDB `id` key)
-    /// – Returns: `true` when the server accepted the batch
     func uploadScan(id: String, images: [Data]) async throws -> Bool
-    
-    /// Poll the backend for task status (and .usdz link when ready)
     func fetchTask(id: String) async throws -> TaskStatusResponse
-    
-    /// Download the finished .usdz model to a local temp file
     func downloadUSDZ(from url: URL) async throws -> URL
 }
 
-// MARK: - Real implementation ----------------------------------------------
+// MARK: - RealScanWebRepository
 
 struct RealScanWebRepository: ScanWebRepository {
     
     let session: URLSession
-    let baseURL: String          // e.g. "https://api.example.com"
+    let baseURL: String
     
     init(session: URLSession = .shared, baseURL: String) {
         self.session = session
         self.baseURL = baseURL
     }
     
-    // MARK: Upload ----------------------------------------------------------
+    // Upload
     
     func uploadScan(id: String, images: [Data]) async throws -> Bool {
         
@@ -61,7 +54,7 @@ struct RealScanWebRepository: ScanWebRepository {
         let presignedResponse: PresignedURLsResponse = try await call(
             endpoint: API.CreateUploadUrls(taskID: id, count: images.count)
         )
-        let presigned = presignedResponse.presigned           // [URL]
+        let presigned = presignedResponse.presigned
         
         guard presigned.count == images.count else {
             throw APIError.unexpectedResponse
@@ -82,9 +75,7 @@ struct RealScanWebRepository: ScanWebRepository {
         }
         
         // ── STEP 3 ──────────────────────────────────────────────────────────────
-        // Retrieve stored endpointArn from UserDefaults
-        guard let endpointArn = UserDefaults.standard.string(forKey: "pushEndpointArn") else {
-            // If we don’t have a saved endpointArn, fail early
+        guard let endpointArn = Defaults[.pushEndpointArn] else {
             throw APIError.unexpectedResponse
         }
         

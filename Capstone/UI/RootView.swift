@@ -12,6 +12,7 @@ struct RootView: View {
     
     @Environment(\.injected) private var injected
     @State private var isSignedIn: Bool = false
+    @State private var didSyncInitialValue: Bool = false
 
     var body: some View {
         Group {
@@ -22,8 +23,13 @@ struct RootView: View {
             }
         }
         .onReceive(isSignedInUpdate) { newValue in
-            withAnimation {
+            if didSyncInitialValue {
+                withAnimation {
+                    isSignedIn = newValue
+                }
+            } else {
                 isSignedIn = newValue
+                didSyncInitialValue = true
             }
         }
     }

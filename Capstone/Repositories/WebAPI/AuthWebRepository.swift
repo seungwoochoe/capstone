@@ -20,7 +20,8 @@ struct CognitoTokenResponse: Decodable {
     let token_type: String
 }
 
-// MARK: – Public API ----------------------------------------------------
+// MARK: - AuthWebRepository
+
 protocol AuthWebRepository: WebRepository {
     func makeHostedUISignInURL(state: String, nonce: String) -> URL
     func exchange(code: String) async throws -> AuthResponse
@@ -71,14 +72,15 @@ struct RealAuthenticationWebRepository: AuthWebRepository {
 
         let cognito = try JSONDecoder().decode(CognitoTokenResponse.self, from: data)
 
-        // keep the shape you already use elsewhere
         return AuthResponse(token: cognito.id_token,
                             userID: try Self.userId(from: cognito.id_token))
     }
 
     private static func userId(from idToken: String) throws -> String {
-        // very small helper to extract the Cognito "sub" from the JWT payload
-        struct Payload: Decodable { let sub: String }
+        struct Payload: Decodable {
+            let sub: String
+        }
+        
         let parts = idToken.split(separator: ".")
         guard parts.count >= 2,
               let data = Data(base64Encoded: String(parts[1])) else {
