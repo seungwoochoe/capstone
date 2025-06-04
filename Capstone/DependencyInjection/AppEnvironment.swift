@@ -15,7 +15,6 @@ struct AppEnvironment {
     let diContainer: DIContainer
     let modelContainer: ModelContainer
     let systemEventsHandler: SystemEventsHandler
-    let keychainService: KeychainService
 }
 
 extension AppEnvironment {
@@ -42,10 +41,10 @@ extension AppEnvironment {
         let clientId = "4oliffdd79l5mmkibr801lcn16"
         let redirectUri = "capstone://auth/callback"
         
-        let appState = Store<AppState>(AppState())
+        let services = configuredServices()
+        let appState = Store<AppState>(AppState(isSignedIn: services.defaultsService[.userID] != nil))
         let session = configuredURLSession()
         let fileManager = configuredFileManager()
-        let keychainService = configuredKeychainService()   // <— This is our new reference
         
         let modelContainer = configuredModelContainer()
         let webRepositories = configuredWebRepositories(session: session,
@@ -60,10 +59,11 @@ extension AppEnvironment {
             webRepositories: webRepositories,
             dbRepositories: dbRepositories,
             fileManager: fileManager,
-            keychainService: keychainService     // ← pass it here so AuthInteractor can save/delete
+            keychainService: services.keychainService,
+            defaultsService: services.defaultsService
         )
         
-        let diContainer = DIContainer(appState: appState, interactors: interactors)
+        let diContainer = DIContainer(appState: appState, services: services, interactors: interactors)
         let deepLinksHandler = RealDeepLinksHandler(diContainer: diContainer)
         let pushNotificationsHandler = RealPushNotificationsHandler(
             scanInteractor: interactors.scanInteractor,
@@ -80,8 +80,7 @@ extension AppEnvironment {
             isRunningTests: ProcessInfo.processInfo.isRunningTests,
             diContainer: diContainer,
             modelContainer: modelContainer,
-            systemEventsHandler: systemEventsHandler,
-            keychainService: keychainService
+            systemEventsHandler: systemEventsHandler
         )
     }
     
@@ -110,8 +109,18 @@ extension AppEnvironment {
         }
     }
     
+    private static func configuredServices() -> DIContainer.Services {
+        let defaultsService = RealDefaultsService()
+        let keychainService = RealKeychainService()
+        return .init(defaultsService: defaultsService,
+                     keychainService: keychainService)
+    }
     private static func configuredKeychainService() -> KeychainService {
         return RealKeychainService()
+    }
+    
+    private static func configuredDefaultsService() -> DefaultsService {
+        return RealDefaultsService()
     }
     
     private static func configuredWebRepositories(session: URLSession, baseURL: String, userPoolDomain: String, clientId: String, redirectUri: String) -> DIContainer.WebRepositories {
@@ -135,10 +144,11 @@ extension AppEnvironment {
         webRepositories: DIContainer.WebRepositories,
         dbRepositories: DIContainer.DBRepositories,
         fileManager: FileManager,
-        keychainService: KeychainService
+        keychainService: KeychainService,
+        defaultsService: DefaultsService
     ) -> DIContainer.Interactors {
         let scan: ScanInteractor = RealScanInteractor(webRepository: webRepositories.scanWebRepository, uploadTaskPersistenceRepository: dbRepositories.uploadTaskDBRepository, scanPersistenceRepository: dbRepositories.scanDBRepository, fileManager: fileManager)
-        let auth: AuthInteractor = RealAuthInteractor(webRepository: webRepositories.authWebRepository, keychainService: keychainService)
+        let auth: AuthInteractor = RealAuthInteractor(appState: appState, webRepository: webRepositories.authWebRepository, keychainService: keychainService, defaultsService: defaultsService)
         let userPermissions: UserPermissionsInteractor = RealUserPermissionsInteractor(appState: appState, openAppSettings: {
             URL(string: UIApplication.openSettingsURLString).flatMap {
                 UIApplication.shared.open($0, options: [:], completionHandler: nil)

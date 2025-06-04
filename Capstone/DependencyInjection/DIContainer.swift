@@ -11,14 +11,16 @@ import SwiftData
 struct DIContainer {
     let appState: Store<AppState>
     let interactors: Interactors
+    let services: Services
 
-    init(appState: Store<AppState> = .init(AppState()), interactors: Interactors) {
+    init(appState: Store<AppState> = .init(AppState()), services: Services, interactors: Interactors) {
         self.appState = appState
+        self.services = services
         self.interactors = interactors
     }
 
-    init(appState: AppState, interactors: Interactors) {
-        self.init(appState: Store<AppState>(appState), interactors: interactors)
+    init(appState: AppState, services: Services, interactors: Interactors) {
+        self.init(appState: Store<AppState>(appState), services: services, interactors: interactors)
     }
 }
 
@@ -34,6 +36,19 @@ extension DIContainer {
     struct DBRepositories {
         let uploadTaskDBRepository: UploadTaskDBRepository
         let scanDBRepository: ScanDBRepository
+    }
+    
+    // MARK: - Services
+    struct Services {
+        let defaultsService: DefaultsService
+        let keychainService: KeychainService
+        
+        static var stub: Self {
+            .init(
+                defaultsService: StubDefaultsService(),
+                keychainService: StubKeychainService()
+            )
+        }
     }
 
     // MARK: - Interactors
@@ -54,7 +69,7 @@ extension DIContainer {
 }
 
 extension EnvironmentValues {
-    @Entry var injected: DIContainer = DIContainer(appState: AppState(), interactors: .stub)
+    @Entry var injected: DIContainer = DIContainer(appState: AppState(), services: .stub, interactors: .stub)
 }
 
 extension View {

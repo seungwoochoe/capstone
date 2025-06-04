@@ -26,20 +26,12 @@ extension AppEnvironment {
                 Text("Running unit tests")
             } else {
                 Group {
-                    if let token = try? keychainService.getToken() {
-                        ContentView()
-                            .modifier(RootViewAppearance())
-                            .modelContainer(modelContainer)
-                            .inject(diContainer)
-                        if modelContainer.isStub {
-                            Text("⚠️ There is an issue with local database")
-                        }
-                    } else {
-                        // No token found → show SignInView first.
-                        SignInView()
-                            .modifier(RootViewAppearance())
-                            .modelContainer(modelContainer)
-                            .inject(diContainer)
+                    RootView()
+                        .modifier(RootViewAppearance())
+                        .modelContainer(modelContainer)
+                        .inject(diContainer)
+                    if modelContainer.isStub {
+                        Text("⚠️ There is an issue with local database")
                     }
                 }
             }

@@ -13,10 +13,19 @@ protocol AuthInteractor {
     func signOut() async throws
 }
 
-struct RealAuthInteractor: AuthInteractor {
+class RealAuthInteractor: AuthInteractor {
     
+    let appState: Store<AppState>
     let webRepository: AuthWebRepository
     let keychainService: KeychainService
+    var defaultsService: DefaultsService
+    
+    init(appState: Store<AppState>, webRepository: AuthWebRepository, keychainService: KeychainService, defaultsService: DefaultsService) {
+        self.appState = appState
+        self.webRepository = webRepository
+        self.keychainService = keychainService
+        self.defaultsService = defaultsService
+    }
     
     func makeHostedUISignInURL(state: String, nonce: String) -> URL {
         return webRepository.makeHostedUISignInURL(state: state, nonce: nonce)
@@ -25,12 +34,24 @@ struct RealAuthInteractor: AuthInteractor {
     func completeSignIn(authorizationCode code: String) async throws {
         let authResponse = try await webRepository.exchange(code: code)
         try keychainService.save(token: authResponse.token)
-        UserDefaults.standard.set(authResponse.userID, forKey: "userID")
+        defaultsService[.userID] = authResponse.userID
+        
+        Task {
+            await MainActor.run {
+                appState[\.auth].isSignedIn = true
+            }
+        }
     }
     
     func signOut() async throws {
         try keychainService.deleteToken()
-        // Delete any local user data, if needed
+        defaultsService[.userID] = nil
+        
+        Task {
+            await MainActor.run {
+                appState[\.auth].isSignedIn = false
+            }
+        }
     }
 }
 
