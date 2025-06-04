@@ -33,22 +33,44 @@ struct SignInView: View {
                                 category: #file)
     
     var body: some View {
-        Button(action: startHostedUISignIn) {
-            HStack(spacing: 8) {
-                Image(systemName: "apple.logo")
-                    .resizable()
-                    .scaledToFit()
-                    .frame(width: 20, height: 20)
+        ZStack {
+            // Optional: background color or gradient
+            Color(.systemGray6)
+                .edgesIgnoringSafeArea(.all)
+            
+            VStack(spacing: 40) {
+                Spacer()
                 
-                Text("Sign in with Apple")
-                    .font(.system(size: 16, weight: .medium))
+                Text("Welcome to\n3D Room Scanner")
+                    .font(.largeTitle).bold()
+                    .multilineTextAlignment(.center)
+                
+                Spacer()
+                
+                Button(action: startHostedUISignIn) {
+                    HStack(spacing: 12) {
+                        Image(systemName: "apple.logo")
+                            .resizable()
+                            .scaledToFit()
+                            .frame(width: 20, height: 20)
+                        
+                        Text("Sign in with Apple")
+                            .font(.system(size: 18, weight: .medium))
+                    }
+                    .foregroundColor(.white)
+                    .frame(maxWidth: .infinity, minHeight: 50)
+                    .background(
+                        RoundedRectangle(cornerRadius: 10)
+                            .fill(Color.black)
+                            .shadow(color: Color.black.opacity(0.2), radius: 5, x: 0, y: 2)
+                    )
+                }
+                .padding(.horizontal, 40)
+                
+                Spacer()
             }
-            .foregroundColor(.white)
-            .frame(maxWidth: .infinity, minHeight: 44)
-            .background(Color.black)
-            .cornerRadius(8)
+            .padding(.vertical, 60)
         }
-        .padding(.horizontal)
     }
     
     private func startHostedUISignIn() {
