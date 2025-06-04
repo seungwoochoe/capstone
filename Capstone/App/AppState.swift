@@ -9,9 +9,22 @@ import SwiftUI
 import Combine
 
 struct AppState: Equatable {
+    var auth: Auth
     var routing = ViewRouting()
     var system = System()
     var permissions = Permissions()
+    
+    init(isSignedIn: Bool = false) {
+        self.auth = Auth(isSignedIn: isSignedIn)
+    }
+}
+
+// MARK: - Auth
+
+extension AppState {
+    struct Auth: Equatable {
+        var isSignedIn: Bool
+    }
 }
 
 // MARK: - Routing

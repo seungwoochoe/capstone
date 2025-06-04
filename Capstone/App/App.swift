@@ -25,13 +25,14 @@ extension AppEnvironment {
             if isRunningTests {
                 Text("Running unit tests")
             } else {
-                ContentView()
-                    .modifier(RootViewAppearance())
-                    .modelContainer(modelContainer)
-                    .inject(diContainer)
-                if modelContainer.isStub {
-                    Text("⚠️ There is an issue with local database")
-                        .font(.caption2)
+                Group {
+                    RootView()
+                        .modifier(RootViewAppearance())
+                        .modelContainer(modelContainer)
+                        .inject(diContainer)
+                    if modelContainer.isStub {
+                        Text("⚠️ There is an issue with local database")
+                    }
                 }
             }
         }

@@ -12,37 +12,78 @@ struct AuthResponse: Codable, Equatable {
     let userID: String
 }
 
+struct CognitoTokenResponse: Decodable {
+    let id_token: String
+    let access_token: String
+    let refresh_token: String?
+    let expires_in: Int
+    let token_type: String
+}
+
+// MARK: – Public API ----------------------------------------------------
 protocol AuthWebRepository: WebRepository {
-    func authenticate(with appleToken: String) async throws -> AuthResponse
+    func makeHostedUISignInURL(state: String, nonce: String) -> URL
+    func exchange(code: String) async throws -> AuthResponse
 }
 
 struct RealAuthenticationWebRepository: AuthWebRepository {
+    
     let session: URLSession
-    let baseURL: String = "https://example.com/api/auth"
-
-    func authenticate(with appleToken: String) async throws -> AuthResponse {
-        return try await call(endpoint: API.authenticate(appleToken: appleToken))
+    let baseURL: String
+    let userPoolDomain: String
+    let clientId: String
+    let redirectUri: String
+    
+    func makeHostedUISignInURL(state: String, nonce: String) -> URL {
+        var comps = URLComponents()
+        comps.scheme = "https"
+        comps.host   = userPoolDomain
+        comps.path   = "/oauth2/authorize"
+        comps.queryItems = [
+            .init(name: "response_type",     value: "code"),
+            .init(name: "client_id",         value: clientId),
+            .init(name: "redirect_uri",      value: redirectUri),
+            .init(name: "scope",             value: "openid email profile"),
+            .init(name: "identity_provider", value: "SignInWithApple"),
+            .init(name: "state",             value: state),
+            .init(name: "nonce",             value: nonce)
+        ]
+        return comps.url!
     }
-}
 
-extension RealAuthenticationWebRepository {
-    enum API {
-        case authenticate(appleToken: String)
-    }
-}
+    func exchange(code: String) async throws -> AuthResponse {
+        let body =
+        "grant_type=authorization_code" +
+        "&client_id=\(clientId)" +
+        "&code=\(code)" +
+        "&redirect_uri=\(redirectUri)"
 
-extension RealAuthenticationWebRepository.API: APICall {
-    var path: String {
-        switch self {
-        case let .authenticate(appleToken):
-            return "/signin?token=\(appleToken)"
+        var req = URLRequest(url:
+            URL(string: "https://\(userPoolDomain)/oauth2/token")!)
+        req.httpMethod = "POST"
+        req.setValue("application/x-www-form-urlencoded", forHTTPHeaderField: "Content-Type")
+        req.httpBody = body.data(using: .utf8)
+
+        let (data, response) = try await session.data(for: req)
+        guard (response as? HTTPURLResponse)?.statusCode == 200 else {
+            throw APIError.unexpectedResponse
         }
+
+        let cognito = try JSONDecoder().decode(CognitoTokenResponse.self, from: data)
+
+        // keep the shape you already use elsewhere
+        return AuthResponse(token: cognito.id_token,
+                            userID: try Self.userId(from: cognito.id_token))
     }
-    var method: String { "POST" }
-    var headers: [String: String]? {
-        ["Content-Type": "application/json"]
-    }
-    func body() throws -> Data? {
-        return nil  // Or serialize a JSON payload if needed.
+
+    private static func userId(from idToken: String) throws -> String {
+        // very small helper to extract the Cognito "sub" from the JWT payload
+        struct Payload: Decodable { let sub: String }
+        let parts = idToken.split(separator: ".")
+        guard parts.count >= 2,
+              let data = Data(base64Encoded: String(parts[1])) else {
+            throw APIError.unexpectedResponse
+        }
+        return try JSONDecoder().decode(Payload.self, from: data).sub
     }
 }

@@ -8,35 +8,55 @@
 import Foundation
 
 protocol AuthInteractor {
-    func signIn() async throws
+    func makeHostedUISignInURL(state: String, nonce: String) -> URL
+    func completeSignIn(authorizationCode: String) async throws
     func signOut() async throws
 }
 
-struct RealAuthInteractor: AuthInteractor {
+class RealAuthInteractor: AuthInteractor {
     
+    let appState: Store<AppState>
     let webRepository: AuthWebRepository
     let keychainService: KeychainService
+    var defaultsService: DefaultsService
     
-    func signIn() async throws {
-        let authResponse = try await webRepository.authenticate(with: "apple_token_placeholder")
-//        try keychainService.save(token: authResponse.token)
+    init(appState: Store<AppState>, webRepository: AuthWebRepository, keychainService: KeychainService, defaultsService: DefaultsService) {
+        self.appState = appState
+        self.webRepository = webRepository
+        self.keychainService = keychainService
+        self.defaultsService = defaultsService
+    }
+    
+    func makeHostedUISignInURL(state: String, nonce: String) -> URL {
+        return webRepository.makeHostedUISignInURL(state: state, nonce: nonce)
+    }
+
+    func completeSignIn(authorizationCode code: String) async throws {
+        let authResponse = try await webRepository.exchange(code: code)
+        try keychainService.save(token: authResponse.token)
+        defaultsService[.userID] = authResponse.userID
+        
+        Task {
+            await MainActor.run {
+                appState[\.auth].isSignedIn = true
+            }
+        }
     }
     
     func signOut() async throws {
-//        try await webRepository.signOut()
-//        try keychainService.deleteToken()
+        try keychainService.deleteToken()
+        defaultsService[.userID] = nil
         
-        // Delete any local user data.
+        Task {
+            await MainActor.run {
+                appState[\.auth].isSignedIn = false
+            }
+        }
     }
 }
 
 struct StubAuthInteractor: AuthInteractor {
-    
-    func signIn() async throws {
-        
-    }
-    
-    func signOut() async throws {
-        
-    }
+    func completeSignIn(authorizationCode: String) async throws {}
+    func makeHostedUISignInURL(state: String, nonce: String) -> URL { return URL(string: "")! }
+    func signOut() async throws {}
 }

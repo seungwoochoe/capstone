@@ -8,6 +8,7 @@
 import Foundation
 import UserNotifications
 import SwiftUI
+import AVFoundation
 
 // MARK: - Permission Types
 
@@ -75,7 +76,7 @@ final class RealUserPermissionsInteractor: UserPermissionsInteractor {
                 appState[keyPath] = await pushNotificationsPermissionStatus()
             }
         case .camera:
-            break
+            appState[keyPath] = cameraPermissionStatus()
         }
     }
 
@@ -95,7 +96,12 @@ final class RealUserPermissionsInteractor: UserPermissionsInteractor {
                 }
             }
         case .camera:
-            break
+            Task {
+                let granted = await AVCaptureDevice.requestAccess(for: .video)
+                await MainActor.run {
+                    appState[\.permissions.camera] = granted ? .granted : .denied
+                }
+            }
         }
     }
 }
@@ -119,18 +125,27 @@ extension UNAuthorizationStatus {
 }
 
 private extension RealUserPermissionsInteractor {
+    
+    // Camera
+    func cameraPermissionStatus() -> Permission.Status {
+        let status = AVCaptureDevice.authorizationStatus(for: .video)
+        
+        switch status {
+        case .notDetermined:
+            return .unknown
+        case .authorized:
+            return .granted
+        default:
+            return .denied
+        }
+    }
 
+    // Push notifications
     func pushNotificationsPermissionStatus() async -> Permission.Status {
         return await notificationCenter
             .currentSettings()
             .authorizationStatus
             .mapToPermissionStatus()
-    }
-
-    func requestPushNotificationsPermission() async {
-        let center = notificationCenter
-        let isGranted = (try? await center.requestAuthorization(options: [.alert, .sound])) ?? false
-        appState[\.permissions.push] = isGranted ? .granted : .denied
     }
 }
 

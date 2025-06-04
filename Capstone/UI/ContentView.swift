@@ -13,14 +13,17 @@ struct ContentView: View {
     
     @Environment(\.injected) private var injected
     @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.openURL) private var openURL
+    
     @State private var scans: [Scan] = []
     @State private var uploadTasks: [UploadTask] = []
-    
+
     @State private var searchIsPresented: Bool = false
     @State private var searchText: String = ""
     @State private var showingScanner: Bool = false
-    @State private var showingAbout: Bool = false
+    @State private var showingSettings: Bool = false
     @State private var selected: Scan? = nil
+    @State private var showingCameraAccessDeniedAlert: Bool = false
     
     var filteredUploadTasks: [UploadTask] {
         if searchText.isEmpty {
@@ -99,18 +102,11 @@ struct ContentView: View {
                 .navigationTitle("3D Room Scanner")
                 .navigationBarTitleDisplayMode(.automatic)
                 .toolbar {
-                    ToolbarItem(placement: .navigationBarTrailing) {
-                        HStack(spacing: 16) {
-                            Menu {
-                                Button("About") {
-                                    showingAbout = true
-                                }
-                                Button("Log Out") {
-                                    logOutUser()
-                                }
-                            } label: {
-                                Image(systemName: "ellipsis.circle")
-                            }
+                    ToolbarItem {
+                        Button {
+                            showingSettings = true
+                        } label: {
+                            Image(systemName: "gear")
                         }
                     }
                 }
@@ -120,7 +116,11 @@ struct ContentView: View {
                     .overlay {
                         if !searchIsPresented {
                             Button {
-                                showingScanner = true
+                                if injected.appState[\.permissions].camera == .granted {
+                                    showingScanner = true
+                                } else {
+                                    showingCameraAccessDeniedAlert = true
+                                }
                             } label: {
                                 Image(systemName: "plus")
                                     .font(.largeTitle)
@@ -133,6 +133,15 @@ struct ContentView: View {
                     }
             }
             .searchable(text: $searchText, isPresented: $searchIsPresented)
+            .alert("Camera Access Denied", isPresented: $showingCameraAccessDeniedAlert) {
+                Button("Settings") {
+                    guard let url = URL(string: UIApplication.openSettingsURLString) else { return }
+                    openURL(url)
+                }
+                Button("Cancel", role: .cancel) { }
+            } message: {
+                Text("Please enable Camera access in Settings to scan your room.")
+            }
             .overlay {
                 if searchIsPresented && filteredUploadTasks.isEmpty && filteredScans.isEmpty {
                     ContentUnavailableView.search(text: searchText)
@@ -146,8 +155,8 @@ struct ContentView: View {
             } content: {
                 RoomScannerView()
             }
-            .sheet(isPresented: $showingAbout) {
-                AboutView(showingAbout: $showingAbout)
+            .sheet(isPresented: $showingSettings) {
+                SettingsView(showingSettings: $showingSettings)
             }
         }
     }
