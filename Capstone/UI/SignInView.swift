@@ -7,111 +7,84 @@
 
 import SwiftUI
 import AuthenticationServices
+import OSLog
+
+final class WebAuthContextProvider: NSObject,
+                                    ASWebAuthenticationPresentationContextProviding {
+    
+    func presentationAnchor(for session: ASWebAuthenticationSession)
+    -> ASPresentationAnchor {
+        
+        UIApplication.shared.connectedScenes
+            .compactMap { $0 as? UIWindowScene }
+            .flatMap { $0.windows }
+            .first { $0.isKeyWindow }
+        ?? ASPresentationAnchor()
+    }
+}
 
 struct SignInView: View {
     
     @Environment(\.injected) private var injected
-    @Environment(\.dismiss) private var dismiss
+    @State private var authSession:      ASWebAuthenticationSession?
+    @State private var contextProvider = WebAuthContextProvider()
     
-    @State private var isSigningIn = false
-    @State private var alertMessage: String?
-    @State private var showAlert = false
+    private let logger = Logger(subsystem: Bundle.main.bundleIdentifier!,
+                                category: #file)
     
     var body: some View {
-        VStack(spacing: 32) {
-            Spacer()
-            
-            Text("Welcome")
-                .font(.largeTitle)
-                .bold()
-                .padding(.bottom, 8)
-            
-            Text("Sign in to continue")
-                .font(.headline)
-                .foregroundColor(.secondary)
-            
-            Spacer()
-            
-            if isSigningIn {
-                ProgressView {
-                    Text("Signing in…")
-                }
-            } else {
-                SignInWithAppleButton(.signIn,
-                                      onRequest: { request in
-                    // Request the user’s full name and email (optional)
-                    request.requestedScopes = [.fullName, .email]
-                },
-                                      onCompletion: handleAuthorizationResult)
-                .signInWithAppleButtonStyle(appleButtonStyle(for: colorScheme))
-                .frame(height: 50)
-                .cornerRadius(8)
-                .padding(.horizontal)
-                .shadow(radius: 4)
-            }
-            
-            Spacer()
-        }
-        .padding()
-        .alert(isPresented: $showAlert) {
-            Alert(title: Text("Sign-In Failed"),
-                  message: Text(alertMessage ?? "Unknown error"),
-                  dismissButton: .default(Text("OK")))
-        }
+        Button("Sign in with Apple") { startHostedUISignIn() }
     }
     
-    @Environment(\.colorScheme) private var colorScheme
-    
-    /// Choose black or white style depending on light/dark mode
-    private func appleButtonStyle(for scheme: ColorScheme) -> SignInWithAppleButton.Style {
-        switch scheme {
-        case .dark:
-            return .white
-        default:
-            return .black
-        }
-    }
-    
-    private func handleAuthorizationResult(_ result: Result<ASAuthorization, Error>) {
-        switch result {
-        case .success(let authorization):
-            guard let credential = authorization.credential as? ASAuthorizationAppleIDCredential else {
-                self.alertMessage = "Unable to get Apple ID credential."
-                self.showAlert = true
-                return
-            }
-            
-            // Extract the identity token (this is a JWT from Apple)
-            guard let tokenData = credential.identityToken,
-                  let tokenString = String(data: tokenData, encoding: .utf8) else {
-                self.alertMessage = "Unable to fetch identity token."
-                self.showAlert = true
-                return
-            }
-            
-            // Call our interactor
-            isSigningIn = true
-            Task {
-                do {
-                    try await injected.interactors.authInteractor.signIn(with: tokenString)
-                    await MainActor.run {
-                        self.isSigningIn = false
-                        // Dismiss or navigate away on success
-                        dismiss()
-                    }
-                } catch {
-                    await MainActor.run {
-                        self.isSigningIn = false
-                        self.alertMessage = error.localizedDescription
-                        self.showAlert = true
+    private func startHostedUISignIn() {
+        let domain      = "capstone-auth.auth.ap-northeast-2.amazoncognito.com"
+        let clientId    = "4oliffdd79l5mmkibr801lcn16"
+        let redirectUri = "capstone://auth/callback"
+        let state       = UUID().uuidString
+        let nonce       = UUID().uuidString
+        
+        var comps = URLComponents()
+        comps.scheme = "https"
+        comps.host   = domain
+        comps.path   = "/oauth2/authorize"
+        comps.queryItems = [
+            .init(name: "response_type",     value: "code"),
+            .init(name: "client_id",         value: clientId),
+            .init(name: "redirect_uri",      value: redirectUri),
+            .init(name: "scope",             value: "openid email profile"),
+            .init(name: "identity_provider", value: "SignInWithApple"),
+            .init(name: "state",             value: state),
+            .init(name: "nonce",             value: nonce)
+        ]
+        
+        guard let authURL = comps.url else { return }
+        
+        authSession = ASWebAuthenticationSession(
+            url: authURL,
+            callbackURLScheme: "capstone") { callbackURL, error in
+                
+                guard let url = callbackURL,
+                      let code = url.queryItem(named: "code") else { return }
+                
+                Task {
+                    do {
+                        try await injected.interactors.authInteractor.completeSignIn(authorizationCode: code)
+                    } catch {
+                        logger.error("Failed to complete sign in: \(error)")
                     }
                 }
             }
-            
-        case .failure(let error):
-            self.alertMessage = error.localizedDescription
-            self.showAlert = true
-        }
+        
+        authSession?.presentationContextProvider = contextProvider
+        authSession?.prefersEphemeralWebBrowserSession = true  // optional
+        authSession?.start()
+    }
+}
+
+private extension URL {
+    func queryItem(named name: String) -> String? {
+        URLComponents(url: self, resolvingAgainstBaseURL: false)?
+            .queryItems?.first(where: { $0.name == name })?.value
     }
 }
 

@@ -8,7 +8,7 @@
 import Foundation
 
 protocol AuthInteractor {
-    func signIn(with appleToken: String) async throws
+    func completeSignIn(authorizationCode: String) async throws
     func signOut() async throws
 }
 
@@ -17,8 +17,8 @@ struct RealAuthInteractor: AuthInteractor {
     let webRepository: AuthWebRepository
     let keychainService: KeychainService
 
-    func signIn(with appleToken: String) async throws {
-        let authResponse = try await webRepository.authenticate(with: appleToken)
+    func completeSignIn(authorizationCode code: String) async throws {
+        let authResponse = try await webRepository.exchange(code: code)
         try keychainService.save(token: authResponse.token)
         UserDefaults.standard.set(authResponse.userID, forKey: "userID")
     }
@@ -30,11 +30,6 @@ struct RealAuthInteractor: AuthInteractor {
 }
 
 struct StubAuthInteractor: AuthInteractor {
-    func signIn(with appleToken: String) async throws {
-        // no-op
-    }
-
-    func signOut() async throws {
-        // no-op
-    }
+    func completeSignIn(authorizationCode: String) async throws {}
+    func signOut() async throws {}
 }

@@ -71,6 +71,14 @@ struct RealSystemEventsHandler: SystemEventsHandler {
     }
     
     private func handle(url: URL) {
+        if url.host == "auth" && url.path == "/callback",
+           let code = url.queryItem(named: "code") {
+            Task {
+                try? await container.interactors.authInteractor.completeSignIn(authorizationCode: code)
+            }
+            return  // Done ­– stop further routing
+        }
+        
         guard let deepLink = DeepLink(url: url) else { return }
         deepLinksHandler.open(deepLink: deepLink)
     }
@@ -141,5 +149,12 @@ private extension Notification {
     var keyboardHeight: CGFloat {
         return (userInfo?[UIResponder.keyboardFrameEndUserInfoKey] as? NSValue)?
             .cgRectValue.height ?? 0
+    }
+}
+
+private extension URL {
+    func queryItem(named name: String) -> String? {
+        URLComponents(url: self, resolvingAgainstBaseURL: false)?
+            .queryItems?.first(where: { $0.name == name })?.value
     }
 }

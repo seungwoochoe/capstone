@@ -16,6 +16,11 @@ protocol WebRepository {
 }
 
 extension WebRepository {
+    
+    private func authorizationHeader() -> String? {
+        try? RealKeychainService().getToken().map { "Bearer \($0)" }
+    }
+    
     func call<Value, Decoder>(
         endpoint: APICall,
         decoder: Decoder = JSONDecoder(),
@@ -23,7 +28,11 @@ extension WebRepository {
     ) async throws -> Value
     where Value: Decodable, Decoder: TopLevelDecoder, Decoder.Input == Data {
 
-        let request = try endpoint.urlRequest(baseURL: baseURL)
+        var request = try endpoint.urlRequest(baseURL: baseURL)
+        if let bearer = authorizationHeader() {
+            request.setValue(bearer, forHTTPHeaderField: "Authorization")
+        }
+        
         let (data, response) = try await session.data(for: request)
         guard let code = (response as? HTTPURLResponse)?.statusCode else {
             throw APIError.unexpectedResponse

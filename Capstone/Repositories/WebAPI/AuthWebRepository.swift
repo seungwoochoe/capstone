@@ -12,54 +12,61 @@ struct AuthResponse: Codable, Equatable {
     let userID: String
 }
 
+struct CognitoTokenResponse: Decodable {
+    let id_token: String
+    let access_token: String
+    let refresh_token: String?
+    let expires_in: Int
+    let token_type: String
+}
+
+// MARK: – Public API ----------------------------------------------------
 protocol AuthWebRepository: WebRepository {
-    func authenticate(with appleToken: String) async throws -> AuthResponse
+    /// Takes the *authorization-code* returned by the Hosted-UI redirect
+    func exchange(code: String) async throws -> AuthResponse
 }
 
 struct RealAuthenticationWebRepository: AuthWebRepository {
     
     let session: URLSession
     let baseURL: String
+    let userPoolDomain = "capstone-auth.auth.ap-northeast-2.amazoncognito.com"
+    let clientId = "4oliffdd79l5mmkibr801lcn16"
+    let redirectUri = "capstone://auth/callback"
 
-    init(session: URLSession = .shared, baseURL: String) {
-        self.session = session
-        self.baseURL = baseURL
-    }
+    func exchange(code: String) async throws -> AuthResponse {
+        let body =
+        "grant_type=authorization_code" +
+        "&client_id=\(clientId)" +
+        "&code=\(code)" +
+        "&redirect_uri=\(redirectUri)"
 
-    func authenticate(with appleToken: String) async throws -> AuthResponse {
-        return try await call(endpoint: API.authenticate(appleToken: appleToken))
-    }
-}
+        var req = URLRequest(url:
+            URL(string: "https://\(userPoolDomain)/oauth2/token")!)
+        req.httpMethod = "POST"
+        req.setValue("application/x-www-form-urlencoded", forHTTPHeaderField: "Content-Type")
+        req.httpBody = body.data(using: .utf8)
 
-extension RealAuthenticationWebRepository {
-    enum API {
-        case authenticate(appleToken: String)
-    }
-}
-
-extension RealAuthenticationWebRepository.API: APICall {
-    var path: String {
-        switch self {
-        case let .authenticate(appleToken):
-            return "/signin?token=\(appleToken)"
+        let (data, response) = try await session.data(for: req)
+        guard (response as? HTTPURLResponse)?.statusCode == 200 else {
+            throw APIError.unexpectedResponse
         }
+
+        let cognito = try JSONDecoder().decode(CognitoTokenResponse.self, from: data)
+
+        // keep the shape you already use elsewhere
+        return AuthResponse(token: cognito.id_token,
+                            userID: try Self.userId(from: cognito.id_token))
     }
 
-    var method: String {
-        switch self {
-        case .authenticate:
-            return "POST"
+    private static func userId(from idToken: String) throws -> String {
+        // very small helper to extract the Cognito "sub" from the JWT payload
+        struct Payload: Decodable { let sub: String }
+        let parts = idToken.split(separator: ".")
+        guard parts.count >= 2,
+              let data = Data(base64Encoded: String(parts[1])) else {
+            throw APIError.unexpectedResponse
         }
-    }
-
-    var headers: [String: String]? {
-        ["Content-Type": "application/json"]
-    }
-
-    func body() throws -> Data? {
-        switch self {
-        case .authenticate:
-            return nil
-        }
+        return try JSONDecoder().decode(Payload.self, from: data).sub
     }
 }
