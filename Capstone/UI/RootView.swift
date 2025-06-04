@@ -21,8 +21,10 @@ struct RootView: View {
                 SignInView()
             }
         }
-        .onReceive(isSignedInUpdate) {
-            isSignedIn = $0
+        .onReceive(isSignedInUpdate) { newValue in
+            withAnimation {
+                isSignedIn = newValue
+            }
         }
     }
     

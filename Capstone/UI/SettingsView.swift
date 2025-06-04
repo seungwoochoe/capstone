@@ -50,6 +50,10 @@ struct SettingsView: View {
                     NavigationLink("Acknowledgements") {
                         AcknowledgementsView(showingSettings: $showingSettings)
                     }
+                } footer: {
+                    if let userID = injected.services.defaultsService[.userID] {
+                            Text("Logged in as \(userID)")
+                    }
                 }
             }
             .toolbar {
