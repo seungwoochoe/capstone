@@ -46,7 +46,7 @@ protocol SystemNotificationsSettings {
 
 protocol UserPermissionsInteractor: AnyObject {
     func resolveStatus(for permission: Permission)
-    func request(permission: Permission)
+    func request(permission: Permission) async throws
 }
 
 // MARK: - RealUserPermissionsInteractor Implementation
@@ -80,27 +80,17 @@ final class RealUserPermissionsInteractor: UserPermissionsInteractor {
         }
     }
 
-    func request(permission: Permission) {
+    func request(permission: Permission) async throws {
         switch permission {
         case .pushNotifications:
-            Task {
-                do {
-                    let granted = try await notificationCenter.requestAuthorization(options: [.alert, .sound, .badge])
-                    await MainActor.run {
-                        self.appState[\.permissions.push] = granted ? .granted : .denied
-                    }
-                } catch {
-                    await MainActor.run {
-                        self.appState[\.permissions.push] = .denied
-                    }
-                }
+            let granted = try await notificationCenter.requestAuthorization(options: [.alert, .sound, .badge])
+            await MainActor.run {
+                self.appState[\.permissions.push] = granted ? .granted : .denied
             }
         case .camera:
-            Task {
-                let granted = await AVCaptureDevice.requestAccess(for: .video)
-                await MainActor.run {
-                    appState[\.permissions.camera] = granted ? .granted : .denied
-                }
+            let granted = await AVCaptureDevice.requestAccess(for: .video)
+            await MainActor.run {
+                appState[\.permissions.camera] = granted ? .granted : .denied
             }
         }
     }
@@ -126,11 +116,8 @@ extension UNAuthorizationStatus {
 
 private extension RealUserPermissionsInteractor {
     
-    // Camera
     func cameraPermissionStatus() -> Permission.Status {
-        let status = AVCaptureDevice.authorizationStatus(for: .video)
-        
-        switch status {
+        switch AVCaptureDevice.authorizationStatus(for: .video) {
         case .notDetermined:
             return .unknown
         case .authorized:
@@ -140,7 +127,6 @@ private extension RealUserPermissionsInteractor {
         }
     }
 
-    // Push notifications
     func pushNotificationsPermissionStatus() async -> Permission.Status {
         return await notificationCenter
             .currentSettings()

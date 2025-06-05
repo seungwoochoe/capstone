@@ -37,7 +37,6 @@ struct RealPushTokenWebRepository: PushTokenWebRepository {
         let payload = ["token": hexToken]
         let bodyData = try JSONEncoder().encode(payload)
         
-        // Call the new /devices/push-token endpoint
         let response: RegisterPushTokenResponse = try await call(
             endpoint: API.Register(bodyData: bodyData)
         )
@@ -56,7 +55,4 @@ private extension RealPushTokenWebRepository {
             func body() throws -> Data? { bodyData }
         }
     }
-
-    /// Dummy type for 204 No Content (not used now)
-    private struct EmptyResponse: Decodable {}
 }

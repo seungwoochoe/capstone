@@ -6,6 +6,7 @@
 //
 
 import SwiftUI
+import OSLog
 
 // MARK: - Main Content View
 
@@ -24,6 +25,8 @@ struct ContentView: View {
     @State private var showingSettings: Bool = false
     @State private var selected: Scan? = nil
     @State private var showingCameraAccessDeniedAlert: Bool = false
+    
+    private let logger = Logger(subsystem: Bundle.main.bundleIdentifier!, category: #file)
     
     var filteredUploadTasks: [UploadTask] {
         if searchText.isEmpty {
@@ -116,10 +119,17 @@ struct ContentView: View {
                     .overlay {
                         if !searchIsPresented {
                             Button {
-                                if injected.appState[\.permissions].camera == .granted {
-                                    showingScanner = true
-                                } else {
-                                    showingCameraAccessDeniedAlert = true
+                                Task {
+                                    do {
+                                        try await injected.interactors.userPermissions.request(permission: .pushNotifications)
+                                        if injected.appState[\.permissions].camera == .granted {
+                                            showingScanner = true
+                                        } else {
+                                            showingCameraAccessDeniedAlert = true
+                                        }
+                                    } catch {
+                                        logger.error("Failed to request notification permission: \(error)")
+                                    }
                                 }
                             } label: {
                                 Image(systemName: "plus")

@@ -24,8 +24,8 @@ struct RealSystemEventsHandler: SystemEventsHandler {
     let deepLinksHandler: DeepLinksHandler
     let pushNotificationsHandler: PushNotificationsHandler
     let pushTokenWebRepository: PushTokenWebRepository
-    private let logger = Logger(subsystem: Bundle.main.bundleIdentifier!, category: #file)
     private let cancelBag = CancelBag()
+    private let logger = Logger(subsystem: Bundle.main.bundleIdentifier!, category: #file)
     
     init(container: DIContainer,
          deepLinksHandler: DeepLinksHandler,
@@ -51,15 +51,12 @@ struct RealSystemEventsHandler: SystemEventsHandler {
     }
     
     private func installPushNotificationsSubscriberOnLaunch() {
-        weak var permissions = container.interactors.userPermissions
         container.appState
             .updates(for: AppState.permissionKeyPath(for: .pushNotifications))
             .first(where: { $0 != .unknown })
             .sink { status in
                 if status == .granted {
-                    // If the permission was granted on a previous launch,
-                    // request the push token again:
-                    permissions?.request(permission: .pushNotifications)
+                    UIApplication.shared.registerForRemoteNotifications()
                 }
             }
             .store(in: cancelBag)
@@ -87,18 +84,7 @@ struct RealSystemEventsHandler: SystemEventsHandler {
         container.appState[\.system.isActive] = true
         container.interactors.userPermissions.resolveStatus(for: .pushNotifications)
         container.interactors.userPermissions.resolveStatus(for: .camera)
-        
-        if container.appState[\.permissions].push != .granted {
-            container.interactors.userPermissions.request(permission: .pushNotifications)
-        }
-        
-        if container.appState[\.permissions].camera != .granted {
-            container.interactors.userPermissions.request(permission: .camera)
-        }
-        
-        if container.appState[\.permissions].push == .granted {
-            UIApplication.shared.registerForRemoteNotifications()
-        }
+        UIApplication.shared.registerForRemoteNotifications()
     }
     
     func sceneWillResignActive() {
@@ -109,7 +95,6 @@ struct RealSystemEventsHandler: SystemEventsHandler {
         logger.log("Handling push registration…")
         switch result {
         case .success(let deviceToken):
-            // Send deviceToken to the backend to get an endpointArn
             Task {
                 do {
                     let endpointArn = try await pushTokenWebRepository.registerPushToken(deviceToken)
