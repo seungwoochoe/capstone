@@ -56,7 +56,7 @@ extension AppEnvironment {
             redirectUri: redirectUri
         )
         
-        let tokenProvider = RealAccessTokenProvider(
+        let accessTokenProvider = RealAccessTokenProvider(
             keychainService: services.keychainService,
             defaultsService: services.defaultsService,
             authWebRepository: authWebRepository
@@ -65,13 +65,13 @@ extension AppEnvironment {
         let scanWebRepository = RealScanWebRepository(
             session: session,
             baseURL: baseURL,
-            accessTokenProvider: tokenProvider
+            accessTokenProvider: accessTokenProvider
         )
         
         let pushTokenWebRepository = RealPushTokenWebRepository(
             session: session,
             baseURL: baseURL,
-            accessTokenProvider: tokenProvider
+            accessTokenProvider: accessTokenProvider
         )
         
         let webRepositories = DIContainer.WebRepositories(
@@ -80,12 +80,12 @@ extension AppEnvironment {
             pushTokenWebRepository: pushTokenWebRepository
         )
         
-        let dbRepositories = configuredDBRepositories(modelContainer: modelContainer)
+        let localRepositories = configuredLocalRepositories(modelContainer: modelContainer)
         
         let interactors = configuredInteractors(
             appState: appState,
             webRepositories: webRepositories,
-            dbRepositories: dbRepositories,
+            localRepositories: localRepositories,
             fileManager: fileManager,
             keychainService: services.keychainService,
             defaultsService: services.defaultsService
@@ -145,29 +145,33 @@ extension AppEnvironment {
     private static func configuredServices() -> DIContainer.Services {
         let defaultsService = RealDefaultsService()
         let keychainService = RealKeychainService()
-        return .init(defaultsService: defaultsService,
-                     keychainService: keychainService)
+        return .init(
+            defaultsService: defaultsService,
+            keychainService: keychainService
+        )
     }
     
-    private static func configuredDBRepositories(modelContainer: ModelContainer) -> DIContainer.DBRepositories {
-        let uploadTask: UploadTaskDBRepository = RealUploadTaskDBRepository(modelContainer: modelContainer)
-        let scan: ScanDBRepository = RealScanDBRepository(modelContainer: modelContainer)
-        return .init(uploadTaskDBRepository: uploadTask,
-                     scanDBRepository: scan)
+    private static func configuredLocalRepositories(modelContainer: ModelContainer) -> DIContainer.LocalRepositories {
+        let uploadTask: UploadTaskLocalRepository = RealUploadTaskLocalRepository(modelContainer: modelContainer)
+        let scan: ScanLocalRepository = RealScanLocalRepository(modelContainer: modelContainer)
+        return .init(
+            uploadTaskLocalRepository: uploadTask,
+            scanLocalRepository: scan
+        )
     }
     
     private static func configuredInteractors(
         appState: Store<AppState>,
         webRepositories: DIContainer.WebRepositories,
-        dbRepositories: DIContainer.DBRepositories,
+        localRepositories: DIContainer.LocalRepositories,
         fileManager: FileManager,
         keychainService: KeychainService,
         defaultsService: DefaultsService
     ) -> DIContainer.Interactors {
         let scan: ScanInteractor = RealScanInteractor(
             webRepository: webRepositories.scanWebRepository,
-            uploadTaskPersistenceRepository: dbRepositories.uploadTaskDBRepository,
-            scanPersistenceRepository: dbRepositories.scanDBRepository,
+            uploadTaskLocalRepository: localRepositories.uploadTaskLocalRepository,
+            scanLocalRepository: localRepositories.scanLocalRepository,
             fileManager: fileManager
         )
         

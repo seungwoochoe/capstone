@@ -26,27 +26,27 @@ protocol ScanInteractor {
 struct RealScanInteractor: ScanInteractor {
     
     private let webRepository: ScanWebRepository
-    private let uploadTaskPersistenceRepository: UploadTaskDBRepository
-    private let scanPersistenceRepository: ScanDBRepository
+    private let uploadTaskLocalRepository: UploadTaskLocalRepository
+    private let scanLocalRepository: ScanLocalRepository
     private let fileManager: FileManager
     private let logger = Logger(subsystem: Bundle.main.bundleIdentifier!, category: #file)
     
     init(webRepository: ScanWebRepository,
-         uploadTaskPersistenceRepository: UploadTaskDBRepository,
-         scanPersistenceRepository: ScanDBRepository,
+         uploadTaskLocalRepository: UploadTaskLocalRepository,
+         scanLocalRepository: ScanLocalRepository,
          fileManager: FileManager) {
         self.webRepository = webRepository
-        self.uploadTaskPersistenceRepository = uploadTaskPersistenceRepository
-        self.scanPersistenceRepository = scanPersistenceRepository
+        self.uploadTaskLocalRepository = uploadTaskLocalRepository
+        self.scanLocalRepository = scanLocalRepository
         self.fileManager = fileManager
     }
     
     func fetchUploadTasks() async throws -> [UploadTask] {
-        try await uploadTaskPersistenceRepository.fetch()
+        try await uploadTaskLocalRepository.fetch()
     }
     
     func fetchScans() async throws -> [Scan] {
-        try await scanPersistenceRepository.fetch()
+        try await scanLocalRepository.fetch()
     }
     
     func storeUploadTask(scanName: String, images: [UIImage]) async throws -> UploadTask {
@@ -61,14 +61,14 @@ struct RealScanInteractor: ScanInteractor {
                                     retryCount: 0,
                                     uploadStatus: .pendingUpload)
         
-        try await uploadTaskPersistenceRepository.store(uploadTask)
+        try await uploadTaskLocalRepository.store(uploadTask)
         return uploadTask
     }
     
     func upload(_ uploadTask: UploadTask) async throws {
         var mutableTask = uploadTask
         mutableTask.uploadStatus = .uploading
-        try await uploadTaskPersistenceRepository.update(mutableTask)
+        try await uploadTaskLocalRepository.update(mutableTask)
         
         do {
             let imageDatas = try uploadTask.imageURLs.map { try Data(contentsOf: $0) }
@@ -77,12 +77,12 @@ struct RealScanInteractor: ScanInteractor {
                                                    images: imageDatas)
             
             mutableTask.uploadStatus = .waitingForResult
-            try await uploadTaskPersistenceRepository.update(mutableTask)
+            try await uploadTaskLocalRepository.update(mutableTask)
         } catch {
             logger.error("Upload failed: \(error)")
             mutableTask.retryCount += 1
             mutableTask.uploadStatus = .failedUpload
-            try await uploadTaskPersistenceRepository.update(mutableTask)
+            try await uploadTaskLocalRepository.update(mutableTask)
             throw error
         }
     }
@@ -100,19 +100,19 @@ struct RealScanInteractor: ScanInteractor {
     // Delete
     
     func delete(_ uploadTask: UploadTask) async throws {
-        try await uploadTaskPersistenceRepository.delete(uploadTask)
+        try await uploadTaskLocalRepository.delete(uploadTask)
         try deleteImagesFromDisk(for: uploadTask)
     }
     
     func delete(_ scan: Scan) async throws {
-        try await scanPersistenceRepository.delete(scan)
+        try await scanLocalRepository.delete(scan)
     }
     
     func deleteAll() async throws {
-        for task in try await uploadTaskPersistenceRepository.fetch() {
+        for task in try await uploadTaskLocalRepository.fetch() {
             try await delete(task)
         }
-        for scan in try await scanPersistenceRepository.fetch() {
+        for scan in try await scanLocalRepository.fetch() {
             try await delete(scan)
         }
     }
@@ -121,7 +121,7 @@ struct RealScanInteractor: ScanInteractor {
     
     private func fetchResult(for scanID: String) async throws {
         
-        guard var uploadTask = try await uploadTaskPersistenceRepository
+        guard var uploadTask = try await uploadTaskLocalRepository
             .fetch().first(where: { $0.id.uuidString == scanID }) else {
             logger.info("No upload task found for scanID \(scanID)")
             return
@@ -133,7 +133,7 @@ struct RealScanInteractor: ScanInteractor {
         guard response.status == "finished" else {
             if response.status == "failed" {
                 uploadTask.uploadStatus = .failedProcessing
-                try? await uploadTaskPersistenceRepository.update(uploadTask)
+                try? await uploadTaskLocalRepository.update(uploadTask)
             }
             return      // still processing
         }
@@ -147,7 +147,7 @@ struct RealScanInteractor: ScanInteractor {
                         name: uploadTask.name,               // keep local name
                         usdzURL: localUSDZ,
                         processedDate: response.processedAt ?? Date())
-        try await scanPersistenceRepository.store(scan)
+        try await scanLocalRepository.store(scan)
         
         // 4) Delete the uploadTask
         try await delete(uploadTask)

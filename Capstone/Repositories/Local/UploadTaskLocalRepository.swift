@@ -1,5 +1,5 @@
 //
-//  UploadTaskDBRepository.swift
+//  UploadTaskLocalRepository.swift
 //  Capstone
 //
 //  Created by Seungwoo Choe on 2025-04-11.
@@ -7,7 +7,7 @@
 
 import SwiftData
 
-protocol UploadTaskDBRepository {
+protocol UploadTaskLocalRepository {
     func fetch() async throws -> [UploadTask]
     func store(_ uploadTask: UploadTask) async throws
     func update(_ uploadTask: UploadTask) async throws
@@ -15,7 +15,7 @@ protocol UploadTaskDBRepository {
 }
 
 @ModelActor
-final actor RealUploadTaskDBRepository: UploadTaskDBRepository {
+final actor RealUploadTaskLocalRepository: UploadTaskLocalRepository {
     
     func fetch() async throws -> [UploadTask] {
         let fetchDescriptor = FetchDescriptor<Persistence.UploadTask>()

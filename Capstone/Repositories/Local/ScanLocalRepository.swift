@@ -1,5 +1,5 @@
 //
-//  ScanDBRepository.swift
+//  ScanLocalRepository.swift
 //  Capstone
 //
 //  Created by Seungwoo Choe on 2025-04-11.
@@ -7,7 +7,7 @@
 
 import SwiftData
 
-protocol ScanDBRepository {
+protocol ScanLocalRepository {
     func fetch() async throws -> [Scan]
     func store(_ scan: Scan) async throws
     func update(_ scan: Scan) async throws
@@ -15,7 +15,7 @@ protocol ScanDBRepository {
 }
 
 @ModelActor
-final actor RealScanDBRepository: ScanDBRepository {
+final actor RealScanLocalRepository: ScanLocalRepository {
     
     func fetch() async throws -> [Scan] {
         let fetchDescriptor = FetchDescriptor<Persistence.Scan>()

@@ -10,10 +10,10 @@ import SwiftData
 import Testing
 @testable import Capstone
 
-@Suite("RealUploadTaskDBRepository Tests")
-struct RealUploadTaskDBRepositoryTests {
+@Suite("RealUploadTaskLocalRepository Tests")
+struct RealUploadTaskLocalRepositoryTests {
     
-    let repository = RealUploadTaskDBRepository(modelContainer: .inMemory)
+    let repository = RealUploadTaskLocalRepository(modelContainer: .inMemory)
     
     @Test("fetch returns empty when repository is new")
     func fetchEmpty() async throws {

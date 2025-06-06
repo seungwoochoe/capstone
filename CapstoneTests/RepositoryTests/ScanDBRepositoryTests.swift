@@ -1,5 +1,5 @@
 //
-//  ScanDBRepositoryTests.swift
+//  ScanLocalRepositoryTests.swift
 //  CapstoneTests
 //
 //  Created by Seungwoo Choe on 2025-05-06.
@@ -10,10 +10,10 @@ import SwiftData
 import Testing
 @testable import Capstone
 
-@Suite("RealScanDBRepository Tests")
-struct RealScanDBRepositoryTests {
+@Suite("RealScanLocalRepository Tests")
+struct RealScanLocalRepositoryTests {
     
-    let repository = RealScanDBRepository(modelContainer: .inMemory)
+    let repository = RealScanLocalRepository(modelContainer: .inMemory)
     
     @Test("fetch returns empty when repository is new")
     func fetchEmpty() async throws {
