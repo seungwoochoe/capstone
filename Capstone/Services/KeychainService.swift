@@ -93,11 +93,11 @@ struct RealKeychainService: KeychainService {
     
     func getAccessToken() throws -> String? {
         let query: [String: Any] = [
-            kSecClass as String:           kSecClassGenericPassword,
-            kSecAttrService as String:     service,
-            kSecAttrAccount as String:     accessTokenAccount,
-            kSecReturnData as String:      kCFBooleanTrue as Any,
-            kSecMatchLimit as String:      kSecMatchLimitOne
+            kSecClass as String:          kSecClassGenericPassword,
+            kSecAttrService as String:    service,
+            kSecAttrAccount as String:    accessTokenAccount,
+            kSecReturnData as String:     kCFBooleanTrue as Any,
+            kSecMatchLimit as String:     kSecMatchLimitOne
         ]
         
         var item: CFTypeRef?
@@ -120,11 +120,11 @@ struct RealKeychainService: KeychainService {
     
     func getRefreshToken() throws -> String? {
         let query: [String: Any] = [
-            kSecClass as String:           kSecClassGenericPassword,
-            kSecAttrService as String:     service,
-            kSecAttrAccount as String:     refreshTokenAccount,
-            kSecReturnData as String:      kCFBooleanTrue as Any,
-            kSecMatchLimit as String:      kSecMatchLimitOne
+            kSecClass as String:          kSecClassGenericPassword,
+            kSecAttrService as String:    service,
+            kSecAttrAccount as String:    refreshTokenAccount,
+            kSecReturnData as String:     kCFBooleanTrue as Any,
+            kSecMatchLimit as String:     kSecMatchLimitOne
         ]
         
         var item: CFTypeRef?
@@ -147,16 +147,16 @@ struct RealKeychainService: KeychainService {
     
     func deleteTokens() throws {
         let deleteAccessQuery: [String: Any] = [
-            kSecClass as String:      kSecClassGenericPassword,
-            kSecAttrService as String: service,
-            kSecAttrAccount as String: accessTokenAccount
+            kSecClass as String:         kSecClassGenericPassword,
+            kSecAttrService as String:   service,
+            kSecAttrAccount as String:   accessTokenAccount
         ]
         let _ = SecItemDelete(deleteAccessQuery as CFDictionary)
         
         let deleteRefreshQuery: [String: Any] = [
-            kSecClass as String:      kSecClassGenericPassword,
-            kSecAttrService as String: service,
-            kSecAttrAccount as String: refreshTokenAccount
+            kSecClass as String:         kSecClassGenericPassword,
+            kSecAttrService as String:   service,
+            kSecAttrAccount as String:   refreshTokenAccount
         ]
         let _ = SecItemDelete(deleteRefreshQuery as CFDictionary)
     }
