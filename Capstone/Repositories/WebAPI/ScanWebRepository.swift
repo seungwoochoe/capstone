@@ -7,8 +7,6 @@
 
 import Foundation
 
-// MARK: - DTOs ---------------------------------------------------------------
-
 struct PresignedURLsResponse: Decodable {
     let presigned: [URL]
 }
@@ -40,17 +38,16 @@ struct RealScanWebRepository: ScanWebRepository {
     
     let session: URLSession
     let baseURL: String
+    let tokenProvider: AccessTokenProvider
     
-    init(session: URLSession = .shared, baseURL: String) {
+    init(session: URLSession = .shared, baseURL: String, accessTokenProvider: AccessTokenProvider) {
         self.session = session
         self.baseURL = baseURL
+        self.tokenProvider = accessTokenProvider
     }
     
-    // Upload
-    
     func uploadScan(id: String, images: [Data]) async throws -> Bool {
-        
-        // ── STEP 1 ──────────────────────────────────────────────────────────────
+        // STEP 1
         let presignedResponse: PresignedURLsResponse = try await call(
             endpoint: API.CreateUploadUrls(taskID: id, count: images.count)
         )
@@ -60,7 +57,7 @@ struct RealScanWebRepository: ScanWebRepository {
             throw APIError.unexpectedResponse
         }
         
-        // ── STEP 2 ──────────────────────────────────────────────────────────────
+        // STEP 2
         try await withThrowingTaskGroup(of: Void.self) { group in
             for (idx, url) in presigned.enumerated() {
                 let data = images[idx]
@@ -74,7 +71,7 @@ struct RealScanWebRepository: ScanWebRepository {
             try await group.waitForAll()
         }
         
-        // ── STEP 3 ──────────────────────────────────────────────────────────────
+        // STEP 3
         guard let endpointArn = Defaults[.pushEndpointArn] else {
             throw APIError.unexpectedResponse
         }
@@ -85,8 +82,6 @@ struct RealScanWebRepository: ScanWebRepository {
         
         return okResponse.ok
     }
-    
-    // ----------------------------------------------------------------------
     
     func fetchTask(id: String) async throws -> TaskStatusResponse {
         try await call(endpoint: API.TaskDetail(id: id))
@@ -101,13 +96,13 @@ struct RealScanWebRepository: ScanWebRepository {
     }
 }
 
-// MARK: - Endpoint definitions ---------------------------------------------
+// MARK: - Endpoint definitions
 
 private extension RealScanWebRepository {
     
     enum API {
         
-        // 1) POST /upload-urls  ------------------------------------------------
+        // 1) POST /upload-urls
         struct CreateUploadUrls: APICall, Encodable {
             let taskId: String
             let imageCount: Int
@@ -123,7 +118,7 @@ private extension RealScanWebRepository {
             func body() throws -> Data? { try JSONEncoder().encode(self) }
         }
         
-        // 2) POST /tasks/{id}/complete  ---------------------------------------
+        // 2) POST /tasks/{id}/complete
         struct UploadComplete: APICall {
             let taskID: String
             let endpointArn: String
@@ -139,7 +134,7 @@ private extension RealScanWebRepository {
             }
         }
         
-        // 3) GET /tasks/{id}  -----------------------------------------------------
+        // 3) GET /tasks/{id}
         struct TaskDetail: APICall {
             let id: String
             var path: String { "/tasks/\(id)" }

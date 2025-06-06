@@ -20,10 +20,10 @@ protocol SystemEventsHandler {
 
 struct RealSystemEventsHandler: SystemEventsHandler {
     
-    let container: DIContainer
-    let deepLinksHandler: DeepLinksHandler
-    let pushNotificationsHandler: PushNotificationsHandler
-    let pushTokenWebRepository: PushTokenWebRepository
+    private let container: DIContainer
+    private let deepLinksHandler: DeepLinksHandler
+    private let pushNotificationsHandler: PushNotificationsHandler
+    private let pushTokenWebRepository: PushTokenWebRepository
     private let cancelBag = CancelBag()
     private let logger = Logger(subsystem: Bundle.main.bundleIdentifier!, category: #file)
     
@@ -84,7 +84,10 @@ struct RealSystemEventsHandler: SystemEventsHandler {
         container.appState[\.system.isActive] = true
         container.interactors.userPermissions.resolveStatus(for: .pushNotifications)
         container.interactors.userPermissions.resolveStatus(for: .camera)
-        UIApplication.shared.registerForRemoteNotifications()
+        
+        if container.appState[\.permissions.push] == .granted {
+            UIApplication.shared.registerForRemoteNotifications()
+        }
     }
     
     func sceneWillResignActive() {
@@ -95,7 +98,7 @@ struct RealSystemEventsHandler: SystemEventsHandler {
         logger.log("Handling push registration…")
         switch result {
         case .success(let deviceToken):
-            Task {
+            Task.detached {
                 do {
                     let endpointArn = try await pushTokenWebRepository.registerPushToken(deviceToken)
                     Defaults[.pushEndpointArn] = endpointArn

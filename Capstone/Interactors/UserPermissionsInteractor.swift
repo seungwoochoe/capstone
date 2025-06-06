@@ -42,16 +42,17 @@ protocol SystemNotificationsSettings {
     var authorizationStatus: UNAuthorizationStatus { get }
 }
 
-// MARK: - UserPermissionsInteractor Protocol
+// MARK: - UserPermissionsInteractor
 
 protocol UserPermissionsInteractor: AnyObject {
     func resolveStatus(for permission: Permission)
     func request(permission: Permission) async throws
 }
 
-// MARK: - RealUserPermissionsInteractor Implementation
+// MARK: - RealUserPermissionsInteractor
 
 final class RealUserPermissionsInteractor: UserPermissionsInteractor {
+    
     private let appState: Store<AppState>
     private let openAppSettings: () -> Void
     private let notificationCenter: SystemNotificationsCenter
@@ -135,7 +136,7 @@ private extension RealUserPermissionsInteractor {
     }
 }
 
-// MARK: - StubUserPermissionsInteractor
+// MARK: - Stub
 
 final class StubUserPermissionsInteractor: UserPermissionsInteractor {
     func resolveStatus(for permission: Permission) {}

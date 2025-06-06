@@ -8,7 +8,10 @@
 import Foundation
 
 struct AuthResponse: Codable, Equatable {
-    let token: String
+    let accessToken: String
+    let refreshToken: String
+    let expiresIn: Int
+    let idToken: String?
     let userID: String
 }
 
@@ -22,18 +25,27 @@ struct CognitoTokenResponse: Decodable {
 
 // MARK: - AuthWebRepository
 
-protocol AuthWebRepository: WebRepository {
+protocol AuthWebRepository {
     func makeHostedUISignInURL(state: String, nonce: String) -> URL
     func exchange(code: String) async throws -> AuthResponse
+    func refreshTokens(using refreshToken: String) async throws -> AuthResponse
 }
 
 struct RealAuthenticationWebRepository: AuthWebRepository {
     
-    let session: URLSession
-    let baseURL: String
-    let userPoolDomain: String
-    let clientId: String
-    let redirectUri: String
+    private let session: URLSession
+    private let baseURL: String
+    private let userPoolDomain: String
+    private let clientId: String
+    private let redirectUri: String
+    
+    init(session: URLSession, baseURL: String, userPoolDomain: String, clientId: String, redirectUri: String) {
+        self.session = session
+        self.baseURL = baseURL
+        self.userPoolDomain = userPoolDomain
+        self.clientId = clientId
+        self.redirectUri = redirectUri
+    }
     
     func makeHostedUISignInURL(state: String, nonce: String) -> URL {
         var comps = URLComponents()
@@ -51,32 +63,67 @@ struct RealAuthenticationWebRepository: AuthWebRepository {
         ]
         return comps.url!
     }
-
+    
     func exchange(code: String) async throws -> AuthResponse {
         let body =
         "grant_type=authorization_code" +
         "&client_id=\(clientId)" +
         "&code=\(code)" +
         "&redirect_uri=\(redirectUri)"
-
-        var req = URLRequest(url:
-            URL(string: "https://\(userPoolDomain)/oauth2/token")!)
+        let url = URL(string: "https://\(userPoolDomain)/oauth2/token")!
+        
+        var req = URLRequest(url: url)
         req.httpMethod = "POST"
         req.setValue("application/x-www-form-urlencoded", forHTTPHeaderField: "Content-Type")
         req.httpBody = body.data(using: .utf8)
-
+        
         let (data, response) = try await session.data(for: req)
         guard (response as? HTTPURLResponse)?.statusCode == 200 else {
             throw APIError.unexpectedResponse
         }
-
+        
         let cognito = try JSONDecoder().decode(CognitoTokenResponse.self, from: data)
-
-        return AuthResponse(token: cognito.id_token,
-                            userID: try Self.userId(from: cognito.id_token))
+        let userId = try extractUserID(from: cognito.id_token)
+        
+        return AuthResponse(
+            accessToken: cognito.access_token,
+            refreshToken: cognito.refresh_token ?? "",
+            expiresIn: cognito.expires_in,
+            idToken: cognito.id_token,
+            userID: userId
+        )
     }
-
-    private static func userId(from idToken: String) throws -> String {
+    
+    func refreshTokens(using refreshToken: String) async throws -> AuthResponse {
+        let body =
+        "grant_type=refresh_token" +
+        "&client_id=\(clientId)" +
+        "&refresh_token=\(refreshToken)"
+        let url = URL(string: "https://\(userPoolDomain)/oauth2/token")!
+        
+        var req = URLRequest(url: url)
+        req.httpMethod = "POST"
+        req.setValue("application/x-www-form-urlencoded", forHTTPHeaderField: "Content-Type")
+        req.httpBody = body.data(using: .utf8)
+        
+        let (data, response) = try await session.data(for: req)
+        guard (response as? HTTPURLResponse)?.statusCode == 200 else {
+            throw APIError.unexpectedResponse
+        }
+        
+        let cognito = try JSONDecoder().decode(CognitoTokenResponse.self, from: data)
+        let userId = try extractUserID(from: cognito.id_token)
+        
+        return AuthResponse(
+            accessToken: cognito.access_token,
+            refreshToken: cognito.refresh_token ?? refreshToken,
+            expiresIn: cognito.expires_in,
+            idToken: cognito.id_token,
+            userID: userId
+        )
+    }
+    
+    private func extractUserID(from idToken: String) throws -> String {
         struct Payload: Decodable {
             let sub: String
         }

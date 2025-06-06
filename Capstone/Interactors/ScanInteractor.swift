@@ -8,7 +8,7 @@
 import SwiftUI
 import OSLog
 
-// MARK: - Protocol
+// MARK: - ScanInteractor
 
 protocol ScanInteractor {
     func fetchUploadTasks() async throws -> [UploadTask]
@@ -21,17 +21,15 @@ protocol ScanInteractor {
     func handlePush(scanID: String) async
 }
 
-// MARK: - Implementation
+// MARK: - RealScanInteractor
 
 struct RealScanInteractor: ScanInteractor {
     
-    let webRepository: ScanWebRepository
-    let uploadTaskPersistenceRepository: UploadTaskDBRepository
-    let scanPersistenceRepository: ScanDBRepository
-    let fileManager: FileManager
-    
-    private let logger = Logger(subsystem: Bundle.main.bundleIdentifier!,
-                                category: "ScanInteractor")
+    private let webRepository: ScanWebRepository
+    private let uploadTaskPersistenceRepository: UploadTaskDBRepository
+    private let scanPersistenceRepository: ScanDBRepository
+    private let fileManager: FileManager
+    private let logger = Logger(subsystem: Bundle.main.bundleIdentifier!, category: #file)
     
     init(webRepository: ScanWebRepository,
          uploadTaskPersistenceRepository: UploadTaskDBRepository,

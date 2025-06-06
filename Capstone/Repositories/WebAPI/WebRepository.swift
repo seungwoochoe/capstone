@@ -13,12 +13,14 @@ enum ApiModel { }
 protocol WebRepository {
     var session: URLSession { get }
     var baseURL: String { get }
+    var tokenProvider: AccessTokenProvider { get }
 }
 
 extension WebRepository {
     
-    private func authorizationHeader() -> String? {
-        try? RealKeychainService().getToken().map { "Bearer \($0)" }
+    private func authorizationHeader() async throws -> String {
+        let token = try await tokenProvider.validAccessToken()
+        return "Bearer \(token)"
     }
     
     func call<Value, Decoder>(
@@ -26,12 +28,11 @@ extension WebRepository {
         decoder: Decoder = JSONDecoder(),
         httpCodes: HTTPCodes = .success
     ) async throws -> Value
-    where Value: Decodable, Decoder: TopLevelDecoder, Decoder.Input == Data {
-
+    where Value: Decodable, Decoder: TopLevelDecoder, Decoder.Input == Data
+    {
         var request = try endpoint.urlRequest(baseURL: baseURL)
-        if let bearer = authorizationHeader() {
-            request.setValue(bearer, forHTTPHeaderField: "Authorization")
-        }
+        let bearer = try await authorizationHeader()
+        request.setValue(bearer, forHTTPHeaderField: "Authorization")
         
         let (data, response) = try await session.data(for: request)
         guard let code = (response as? HTTPURLResponse)?.statusCode else {
@@ -40,6 +41,7 @@ extension WebRepository {
         guard httpCodes.contains(code) else {
             throw APIError.httpCode(code)
         }
+        
         do {
             return try decoder.decode(Value.self, from: data)
         } catch {
@@ -50,29 +52,18 @@ extension WebRepository {
 
 // MARK: - APICall
 
+typealias HTTPCode = Int
+typealias HTTPCodes = Range<HTTPCode>
+
+extension HTTPCodes {
+    static let success = 200 ..< 300
+}
+
 protocol APICall {
     var path: String { get }
     var method: String { get }
     var headers: [String: String]? { get }
     func body() throws -> Data?
-}
-
-enum APIError: Swift.Error, Equatable {
-    case invalidURL
-    case httpCode(HTTPCode)
-    case unexpectedResponse
-    case imageDeserialization
-}
-
-extension APIError: LocalizedError {
-    var errorDescription: String? {
-        switch self {
-        case .invalidURL: return "Invalid URL"
-        case let .httpCode(code): return "Unexpected HTTP code: \(code)"
-        case .unexpectedResponse: return "Unexpected response from the server"
-        case .imageDeserialization: return "Cannot deserialize image from Data"
-        }
-    }
 }
 
 extension APICall {
@@ -88,9 +79,21 @@ extension APICall {
     }
 }
 
-typealias HTTPCode = Int
-typealias HTTPCodes = Range<HTTPCode>
-
-extension HTTPCodes {
-    static let success = 200 ..< 300
+enum APIError: Swift.Error, Equatable, LocalizedError {
+    case invalidURL
+    case notSignedIn
+    case httpCode(HTTPCode)
+    case unexpectedResponse
+    case imageDeserialization
+    
+    var errorDescription: String? {
+        switch self {
+        case .invalidURL: return "Invalid URL"
+        case .notSignedIn: return "User is not signed in"
+        case let .httpCode(code): return "Unexpected HTTP code: \(code)"
+        case .unexpectedResponse: return "Unexpected response from the server"
+        case .imageDeserialization: return "Cannot deserialize image from Data"
+        }
+    }
 }
+

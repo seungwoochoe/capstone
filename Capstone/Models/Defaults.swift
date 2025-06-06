@@ -13,4 +13,5 @@ typealias Defaults = _Defaults
 extension Defaults.Keys {
     static let userID = Key<String?>("userID")
     static let pushEndpointArn = Key<String?>("pushEndpointArn")
+    static let tokenExpirationDate = Key<Date>("tokenExpirationDate", default: .distantPast)
 }

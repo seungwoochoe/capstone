@@ -42,16 +42,44 @@ extension AppEnvironment {
         let redirectUri = "capstone://auth/callback"
         
         let services = configuredServices()
+        
         let appState = Store<AppState>(AppState(isSignedIn: services.defaultsService[.userID] != nil))
         let session = configuredURLSession()
         let fileManager = configuredFileManager()
-        
         let modelContainer = configuredModelContainer()
-        let webRepositories = configuredWebRepositories(session: session,
-                                                        baseURL: baseURL,
-                                                        userPoolDomain: userPoolDomain,
-                                                        clientId: clientId,
-                                                        redirectUri: redirectUri)
+        
+        let authWebRepository = RealAuthenticationWebRepository(
+            session: session,
+            baseURL: baseURL,
+            userPoolDomain: userPoolDomain,
+            clientId: clientId,
+            redirectUri: redirectUri
+        )
+        
+        let tokenProvider = RealAccessTokenProvider(
+            keychainService: services.keychainService,
+            defaultsService: services.defaultsService,
+            authWebRepository: authWebRepository
+        )
+        
+        let scanWebRepository = RealScanWebRepository(
+            session: session,
+            baseURL: baseURL,
+            accessTokenProvider: tokenProvider
+        )
+        
+        let pushTokenWebRepository = RealPushTokenWebRepository(
+            session: session,
+            baseURL: baseURL,
+            accessTokenProvider: tokenProvider
+        )
+        
+        let webRepositories = DIContainer.WebRepositories(
+            scanWebRepository: scanWebRepository,
+            authWebRepository: authWebRepository,
+            pushTokenWebRepository: pushTokenWebRepository
+        )
+        
         let dbRepositories = configuredDBRepositories(modelContainer: modelContainer)
         
         let interactors = configuredInteractors(
@@ -63,7 +91,12 @@ extension AppEnvironment {
             defaultsService: services.defaultsService
         )
         
-        let diContainer = DIContainer(appState: appState, services: services, interactors: interactors)
+        let diContainer = DIContainer(
+            appState: appState,
+            services: services,
+            interactors: interactors
+        )
+        
         let deepLinksHandler = RealDeepLinksHandler(diContainer: diContainer)
         let pushNotificationsHandler = RealPushNotificationsHandler(
             scanInteractor: interactors.scanInteractor,
@@ -115,22 +148,6 @@ extension AppEnvironment {
         return .init(defaultsService: defaultsService,
                      keychainService: keychainService)
     }
-    private static func configuredKeychainService() -> KeychainService {
-        return RealKeychainService()
-    }
-    
-    private static func configuredDefaultsService() -> DefaultsService {
-        return RealDefaultsService()
-    }
-    
-    private static func configuredWebRepositories(session: URLSession, baseURL: String, userPoolDomain: String, clientId: String, redirectUri: String) -> DIContainer.WebRepositories {
-        let scan = RealScanWebRepository(session: session, baseURL: baseURL)
-        let authentication = RealAuthenticationWebRepository(session: session, baseURL: baseURL, userPoolDomain: userPoolDomain, clientId: clientId, redirectUri: redirectUri)
-        let pushToken = RealPushTokenWebRepository(session: session, baseURL: baseURL)
-        return .init(scanWebRepository: scan,
-                     authWebRepository: authentication,
-                     pushTokenWebRepository: pushToken)
-    }
     
     private static func configuredDBRepositories(modelContainer: ModelContainer) -> DIContainer.DBRepositories {
         let uploadTask: UploadTaskDBRepository = RealUploadTaskDBRepository(modelContainer: modelContainer)
@@ -147,13 +164,33 @@ extension AppEnvironment {
         keychainService: KeychainService,
         defaultsService: DefaultsService
     ) -> DIContainer.Interactors {
-        let scan: ScanInteractor = RealScanInteractor(webRepository: webRepositories.scanWebRepository, uploadTaskPersistenceRepository: dbRepositories.uploadTaskDBRepository, scanPersistenceRepository: dbRepositories.scanDBRepository, fileManager: fileManager)
-        let auth: AuthInteractor = RealAuthInteractor(appState: appState, webRepository: webRepositories.authWebRepository, keychainService: keychainService, defaultsService: defaultsService)
-        let userPermissions: UserPermissionsInteractor = RealUserPermissionsInteractor(appState: appState, openAppSettings: {
-            URL(string: UIApplication.openSettingsURLString).flatMap {
-                UIApplication.shared.open($0, options: [:], completionHandler: nil)
+        let scan: ScanInteractor = RealScanInteractor(
+            webRepository: webRepositories.scanWebRepository,
+            uploadTaskPersistenceRepository: dbRepositories.uploadTaskDBRepository,
+            scanPersistenceRepository: dbRepositories.scanDBRepository,
+            fileManager: fileManager
+        )
+        
+        let auth: AuthInteractor = RealAuthInteractor(
+            appState: appState,
+            webRepository: webRepositories.authWebRepository,
+            keychainService: keychainService,
+            defaultsService: defaultsService
+        )
+        
+        let userPermissions: UserPermissionsInteractor = RealUserPermissionsInteractor(
+            appState: appState,
+            openAppSettings: {
+                URL(string: UIApplication.openSettingsURLString).flatMap {
+                    UIApplication.shared.open($0, options: [:], completionHandler: nil)
+                }
             }
-        })
-        return .init(scanInteractor: scan, authInteractor: auth, userPermissions: userPermissions)
+        )
+        
+        return .init(
+            scanInteractor: scan,
+            authInteractor: auth,
+            userPermissions: userPermissions
+        )
     }
 }
