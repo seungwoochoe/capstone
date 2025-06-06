@@ -20,21 +20,6 @@ struct AppEnvironment {
 extension AppEnvironment {
     
     static func bootstrap() -> AppEnvironment {
-        /*
-         To see the deep linking in action:
-         
-         1. Launch the app in iOS 13.4 simulator (or newer)
-         2. Subscribe on Push Notifications with "Allow Push" button
-         3. Minimize the app
-         4. Drag & drop "push_with_deeplink.apns" into the Simulator window
-         5. Tap on the push notification
-         
-         Alternatively, just copy the code below before the "return" and launch:
-         
-         DispatchQueue.main.async {
-         deepLinksHandler.open(deepLink: .showScan(scanID: "Scan.sample.id.uuidString"))
-         }
-         */
         
         let baseURL = "https://0lin00e8oe.execute-api.ap-northeast-2.amazonaws.com"
         let userPoolDomain = "capstone-auth.auth.ap-northeast-2.amazoncognito.com"

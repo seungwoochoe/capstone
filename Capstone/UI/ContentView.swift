@@ -6,6 +6,7 @@
 //
 
 import SwiftUI
+import Combine
 import OSLog
 
 // MARK: - Main Content View
@@ -53,6 +54,11 @@ struct ContentView: View {
             .onAppear {
                 loadUploadTasks()
                 loadScans()
+            }
+            .onReceive(routingUpdate) { newValue in
+                if let scan = scans.first(where: { $0.id == newValue.selectedScanID }) {
+                    selected = scan
+                }
             }
     }
     
@@ -171,7 +177,11 @@ struct ContentView: View {
         }
     }
     
-    // MARK: - Helper Functions
+    // MARK: - Helpers
+    
+    private var routingUpdate: AnyPublisher<AppState.ViewRouting, Never> {
+        injected.appState.updates(for: \.routing)
+    }
     
     private func loadUploadTasks() {
         Task.detached {
