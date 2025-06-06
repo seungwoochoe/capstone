@@ -6,13 +6,14 @@
 //
 
 import Foundation
+import OSLog
 
 struct AuthResponse: Codable, Equatable {
     let accessToken: String
     let refreshToken: String
     let expiresIn: Int
-    let idToken: String?
-    let userID: String
+    let idToken: String
+    let userID: String?
 }
 
 struct CognitoTokenResponse: Decodable {
@@ -38,6 +39,8 @@ struct RealAuthenticationWebRepository: AuthWebRepository {
     private let userPoolDomain: String
     private let clientId: String
     private let redirectUri: String
+    
+    private let logger = Logger(subsystem: Bundle.main.bundleIdentifier!, category: #file)
     
     init(session: URLSession, baseURL: String, userPoolDomain: String, clientId: String, redirectUri: String) {
         self.session = session
@@ -79,6 +82,7 @@ struct RealAuthenticationWebRepository: AuthWebRepository {
         
         let (data, response) = try await session.data(for: req)
         guard (response as? HTTPURLResponse)?.statusCode == 200 else {
+            logger.error("Got unexpected status code: \(String(describing: response))")
             throw APIError.unexpectedResponse
         }
         
@@ -108,18 +112,18 @@ struct RealAuthenticationWebRepository: AuthWebRepository {
         
         let (data, response) = try await session.data(for: req)
         guard (response as? HTTPURLResponse)?.statusCode == 200 else {
+            logger.error("Got unexpected status code: \(String(describing: response))")
             throw APIError.unexpectedResponse
         }
         
         let cognito = try JSONDecoder().decode(CognitoTokenResponse.self, from: data)
-        let userId = try extractUserID(from: cognito.id_token)
         
         return AuthResponse(
             accessToken: cognito.access_token,
             refreshToken: cognito.refresh_token ?? refreshToken,
             expiresIn: cognito.expires_in,
             idToken: cognito.id_token,
-            userID: userId
+            userID: nil
         )
     }
     
