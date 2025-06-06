@@ -9,7 +9,6 @@ import SwiftUI
 import SwiftData
 import OSLog
 
-@MainActor
 struct AppEnvironment {
     let isRunningTests: Bool
     let diContainer: DIContainer
@@ -104,12 +103,10 @@ extension AppEnvironment {
     
     private static func configuredURLSession() -> URLSession {
         let configuration = URLSessionConfiguration.default
-        configuration.timeoutIntervalForRequest = 60
+        configuration.timeoutIntervalForRequest = 30
         configuration.timeoutIntervalForResource = 120
         configuration.waitsForConnectivity = true
-        configuration.httpMaximumConnectionsPerHost = 5
-        configuration.requestCachePolicy = .returnCacheDataElseLoad
-        configuration.urlCache = .shared
+        configuration.requestCachePolicy = .useProtocolCachePolicy
         return URLSession(configuration: configuration)
     }
     
@@ -153,21 +150,21 @@ extension AppEnvironment {
         keychainService: KeychainService,
         defaultsService: DefaultsService
     ) -> DIContainer.Interactors {
-        let scan: ScanInteractor = RealScanInteractor(
+        let scan = RealScanInteractor(
             webRepository: webRepositories.scanWebRepository,
             uploadTaskLocalRepository: localRepositories.uploadTaskLocalRepository,
             scanLocalRepository: localRepositories.scanLocalRepository,
             fileManager: fileManager
         )
         
-        let auth: AuthInteractor = RealAuthInteractor(
+        let auth = RealAuthInteractor(
             appState: appState,
             webRepository: webRepositories.authWebRepository,
             keychainService: keychainService,
             defaultsService: defaultsService
         )
         
-        let userPermissions: UserPermissionsInteractor = RealUserPermissionsInteractor(
+        let userPermissions = RealUserPermissionsInteractor(
             appState: appState,
             openAppSettings: {
                 URL(string: UIApplication.openSettingsURLString).flatMap {

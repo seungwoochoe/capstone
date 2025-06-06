@@ -39,10 +39,12 @@ extension Persistence {
 extension Persistence.Scan {
     
     convenience init(scan: Scan) {
-        self.init(id: scan.id,
-                  name: scan.name,
-                  usdzURL: scan.usdzURL,
-                  processedDate: scan.processedDate)
+        self.init(
+            id: scan.id,
+            name: scan.name,
+            usdzURL: scan.usdzURL,
+            processedDate: scan.processedDate
+        )
     }
 
     func toDomain() -> Scan {

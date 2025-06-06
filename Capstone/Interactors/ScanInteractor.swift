@@ -144,7 +144,7 @@ struct RealScanInteractor: ScanInteractor {
         
         // 3) Persist as Scan
         let scan = Scan(id: uploadTask.id,
-                        name: uploadTask.name,               // keep local name
+                        name: uploadTask.name,
                         usdzURL: localUSDZ,
                         processedDate: response.processedAt ?? Date())
         try await scanLocalRepository.store(scan)

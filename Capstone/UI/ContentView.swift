@@ -128,7 +128,7 @@ struct ContentView: View {
                                 Task {
                                     do {
                                         try await injected.interactors.userPermissions.request(permission: .pushNotifications)
-                                        if injected.appState[\.permissions].camera == .granted {
+                                        if injected.appState[\.permissions.camera] == .granted {
                                             showingScanner = true
                                         } else {
                                             showingCameraAccessDeniedAlert = true

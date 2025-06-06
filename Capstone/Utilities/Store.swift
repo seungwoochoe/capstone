@@ -35,8 +35,6 @@ extension Store {
     }
 }
 
-// MARK: -
-
 extension Binding where Value: Equatable {
     func dispatched<State>(to state: Store<State>,
                            _ keyPath: WritableKeyPath<State, Value>) -> Self {

@@ -7,11 +7,15 @@
 
 import Foundation
 
+// MARK: - AuthInteractor
+
 protocol AuthInteractor {
     func makeHostedUISignInURL(state: String, nonce: String) -> URL
     func completeSignIn(authorizationCode: String) async throws
     func signOut() async throws
 }
+
+// MARK: - RealAuthInteractor
 
 final class RealAuthInteractor: AuthInteractor {
     
@@ -45,7 +49,7 @@ final class RealAuthInteractor: AuthInteractor {
         defaultsService[.userID] = authResponse.userID
         
         Task { @MainActor in
-            appState[\.auth].isSignedIn = true
+            appState[\.auth.isSignedIn] = true
         }
     }
     
@@ -56,7 +60,7 @@ final class RealAuthInteractor: AuthInteractor {
         defaultsService[.userID] = nil
         
         Task { @MainActor in
-            appState[\.auth].isSignedIn = false
+            appState[\.auth.isSignedIn] = false
         }
     }
 }

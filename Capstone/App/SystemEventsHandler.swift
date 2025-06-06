@@ -9,7 +9,6 @@ import SwiftUI
 import Combine
 import OSLog
 
-@MainActor
 protocol SystemEventsHandler {
     func sceneOpenURLContexts(_ urlContexts: Set<UIOpenURLContext>)
     func sceneDidBecomeActive()
@@ -98,7 +97,7 @@ struct RealSystemEventsHandler: SystemEventsHandler {
         logger.log("Handling push registration…")
         switch result {
         case .success(let deviceToken):
-            Task.detached {
+            Task {
                 do {
                     let endpointArn = try await pushTokenWebRepository.registerPushToken(deviceToken)
                     Defaults[.pushEndpointArn] = endpointArn
@@ -125,17 +124,21 @@ struct RealSystemEventsHandler: SystemEventsHandler {
 // MARK: - Notifications
 
 private extension NotificationCenter {
+    
     var keyboardHeightPublisher: AnyPublisher<CGFloat, Never> {
         let willShow = publisher(for: UIApplication.keyboardWillShowNotification)
             .map { $0.keyboardHeight }
+        
         let willHide = publisher(for: UIApplication.keyboardWillHideNotification)
             .map { _ in CGFloat(0) }
+        
         return Publishers.Merge(willShow, willHide)
             .eraseToAnyPublisher()
     }
 }
 
 private extension Notification {
+    
     var keyboardHeight: CGFloat {
         return (userInfo?[UIResponder.keyboardFrameEndUserInfoKey] as? NSValue)?
             .cgRectValue.height ?? 0

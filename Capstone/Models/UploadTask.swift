@@ -71,12 +71,14 @@ extension Persistence {
 extension Persistence.UploadTask {
     
     convenience init(uploadTask: UploadTask) {
-        self.init(id: uploadTask.id,
-                  name: uploadTask.name,
-                  imageURLs: uploadTask.imageURLs,
-                  createdAt: uploadTask.createdAt,
-                  retryCount: uploadTask.retryCount,
-                  uploadStatus: uploadTask.uploadStatus)
+        self.init(
+            id: uploadTask.id,
+            name: uploadTask.name,
+            imageURLs: uploadTask.imageURLs,
+            createdAt: uploadTask.createdAt,
+            retryCount: uploadTask.retryCount,
+            uploadStatus: uploadTask.uploadStatus
+        )
     }
     
     func toDomain() -> UploadTask {

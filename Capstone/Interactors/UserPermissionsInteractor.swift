@@ -54,7 +54,7 @@ final class RealUserPermissionsInteractor: UserPermissionsInteractor {
     private let appState: Store<AppState>
     private let openAppSettings: () -> Void
     private let notificationCenter: SystemNotificationsCenter
-
+    
     init(appState: Store<AppState>,
          notificationCenter: SystemNotificationsCenter = UNUserNotificationCenter.current(),
          openAppSettings: @escaping () -> Void) {
@@ -62,7 +62,7 @@ final class RealUserPermissionsInteractor: UserPermissionsInteractor {
         self.notificationCenter = notificationCenter
         self.openAppSettings = openAppSettings
     }
-
+    
     func resolveStatus(for permission: Permission) {
         let keyPath = AppState.permissionKeyPath(for: permission)
         let currentStatus = appState[keyPath]
@@ -78,7 +78,7 @@ final class RealUserPermissionsInteractor: UserPermissionsInteractor {
             appState[keyPath] = cameraPermissionStatus()
         }
     }
-
+    
     func request(permission: Permission) async throws {
         switch permission {
         case .pushNotifications:
@@ -125,7 +125,7 @@ private extension RealUserPermissionsInteractor {
             return .denied
         }
     }
-
+    
     func pushNotificationsPermissionStatus() async -> Permission.Status {
         return await notificationCenter
             .currentSettings()

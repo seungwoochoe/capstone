@@ -29,7 +29,8 @@ enum DeepLink: Equatable {
     }
 }
 
-@MainActor
+// MARK: - DeepLinksHandler
+
 protocol DeepLinksHandler {
     func open(deepLink: DeepLink)
 }

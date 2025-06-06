@@ -128,6 +128,7 @@ struct RealAuthenticationWebRepository: AuthWebRepository {
     }
     
     private func extractUserID(from idToken: String) throws -> String {
+        
         struct Payload: Decodable {
             let sub: String
         }
