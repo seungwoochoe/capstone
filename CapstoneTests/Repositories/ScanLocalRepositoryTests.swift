@@ -6,11 +6,10 @@
 //
 
 import Foundation
-import SwiftData
 import Testing
 @testable import Capstone
 
-@Suite("RealScanLocalRepository Tests")
+@Suite("RealScanLocalRepositoryTests")
 struct RealScanLocalRepositoryTests {
     
     let repository = RealScanLocalRepository(modelContainer: .inMemory)
