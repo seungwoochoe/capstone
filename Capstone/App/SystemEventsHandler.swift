@@ -5,7 +5,7 @@
 //  Created by Seungwoo Choe on 2025-04-09.
 //
 
-import UIKit
+import SwiftUI
 import Combine
 import OSLog
 

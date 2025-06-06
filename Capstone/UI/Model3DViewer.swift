@@ -15,7 +15,7 @@ struct Model3DViewer: View {
     @Environment(\.injected) private var injected
     
     let scan: Scan
-    let logger = Logger(subsystem: Bundle.main.bundleIdentifier!, category: "Model3DViewer")
+    let logger = Logger(subsystem: Bundle.main.bundleIdentifier!, category: #file)
     
     var body: some View {
         NavigationStack {

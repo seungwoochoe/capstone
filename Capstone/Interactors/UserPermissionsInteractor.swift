@@ -5,8 +5,6 @@
 //  Created by Seungwoo Choe on 2025-04-11.
 //
 
-import Foundation
-import UserNotifications
 import SwiftUI
 import AVFoundation
 

@@ -14,7 +14,7 @@ struct USDZThumbnailView: View {
     let size: CGSize
     @State private var thumbnail: UIImage?
     
-    private let logger = Logger(subsystem: Bundle.main.bundleIdentifier!, category: "USDZThumbnailView")
+    private let logger = Logger(subsystem: Bundle.main.bundleIdentifier!, category: #file)
     
     var body: some View {
         ZStack {

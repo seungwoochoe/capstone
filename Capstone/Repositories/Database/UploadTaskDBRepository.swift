@@ -6,7 +6,6 @@
 //
 
 import SwiftData
-import Foundation
 
 protocol UploadTaskDBRepository {
     func fetch() async throws -> [UploadTask]

@@ -28,7 +28,7 @@ struct RoomScannerView: View {
     
     private let totalCaptures: Int = 60
     private let angleThresholdDegrees: Float = 6.0  // One segment per 6° rotation.
-    private let logger = Logger(subsystem: Bundle.main.bundleIdentifier!, category: "RoomScannerView")
+    private let logger = Logger(subsystem: Bundle.main.bundleIdentifier!, category: #file)
     
     var body: some View {
         ZStack(alignment: .bottom) {

@@ -6,7 +6,6 @@
 //
 
 import SwiftUI
-import SwiftData
 
 struct DIContainer {
     let appState: Store<AppState>

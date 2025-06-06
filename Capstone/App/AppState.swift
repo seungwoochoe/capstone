@@ -5,8 +5,7 @@
 //  Created by Seungwoo Choe on 2025-04-11.
 //
 
-import SwiftUI
-import Combine
+import Foundation
 
 struct AppState: Equatable {
     var auth: Auth
