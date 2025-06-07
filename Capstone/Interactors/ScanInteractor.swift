@@ -14,6 +14,7 @@ protocol ScanInteractor {
     func fetchUploadTasks() async throws -> [UploadTask]
     func fetchScans() async throws -> [Scan]
     func storeUploadTask(scanName: String, images: [UIImage]) async throws -> UploadTask
+    func uploadPendingTasks() async
     func upload(_ uploadTask: UploadTask) async throws
     func delete(_ uploadTask: UploadTask) async throws
     func delete(_ scan: Scan) async throws
@@ -63,6 +64,26 @@ struct RealScanInteractor: ScanInteractor {
         
         try await uploadTaskLocalRepository.store(uploadTask)
         return uploadTask
+    }
+    
+    func uploadPendingTasks() async {
+        do {
+            let allTasks = try await uploadTaskLocalRepository.fetch()
+            let tasksToUpload = allTasks.filter {
+                $0.uploadStatus == .pendingUpload ||
+                $0.uploadStatus == .failedUpload
+            }
+            
+            for task in tasksToUpload {
+                do {
+                    try await upload(task)
+                } catch {
+                    logger.error("Failed uploading task \(task.id): \(error.localizedDescription)")
+                }
+            }
+        } catch {
+            logger.error("Could not fetch upload tasks: \(error.localizedDescription)")
+        }
     }
     
     func upload(_ uploadTask: UploadTask) async throws {
@@ -188,10 +209,11 @@ struct StubScanInteractor: ScanInteractor {
     func fetchUploadTasks() async throws -> [UploadTask] { [] }
     func fetchScans() async throws -> [Scan] { [] }
     func storeUploadTask(scanName: String, images: [UIImage]) async throws -> UploadTask { .sample }
-    func upload(_ uploadTask: UploadTask) async throws { }
-    func export(_ scan: Scan) async throws { }
-    func delete(_ uploadTask: UploadTask) async throws { }
-    func delete(_ scan: Scan) async throws { }
-    func deleteAll() async throws { }
-    func handlePush(scanID: String) async { }
+    func upload(_ uploadTask: UploadTask) async throws {}
+    func uploadPendingTasks() async {}
+    func export(_ scan: Scan) async throws {}
+    func delete(_ uploadTask: UploadTask) async throws {}
+    func delete(_ scan: Scan) async throws {}
+    func deleteAll() async throws {}
+    func handlePush(scanID: String) async {}
 }

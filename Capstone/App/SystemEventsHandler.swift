@@ -87,6 +87,10 @@ struct RealSystemEventsHandler: SystemEventsHandler {
         if container.appState[\.permissions.push] == .granted {
             UIApplication.shared.registerForRemoteNotifications()
         }
+        
+        Task {
+            await container.interactors.scanInteractor.uploadPendingTasks()
+        }
     }
     
     func sceneWillResignActive() {
