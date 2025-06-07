@@ -21,6 +21,19 @@ extension Scan {
             processedDate: .now
         )
     }()
+    
+    static let samplePly: Scan = {
+        guard let modelURL = Bundle.main.url(forResource: "sample", withExtension: "ply") else {
+            fatalError("Unable to find sample.ply in bundle.")
+        }
+        
+        return Scan(
+            id: UUID(),
+            name: "Sample Scan",
+            usdzURL: modelURL,
+            processedDate: .now
+        )
+    }()
 }
 
 extension UploadTask {
