@@ -50,7 +50,8 @@ extension AppEnvironment {
             session: session,
             baseURL: baseURL,
             accessTokenProvider: accessTokenProvider,
-            defaultsService: services.defaultsService
+            defaultsService: services.defaultsService,
+            fileManager: fileManager
         )
         
         let pushTokenWebRepository = RealPushTokenWebRepository(

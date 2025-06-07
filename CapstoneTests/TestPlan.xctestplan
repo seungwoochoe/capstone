@@ -1,15 +1,20 @@
 {
   "configurations" : [
     {
-      "id" : "D7B134D1-39FF-4A8C-B3B9-B59B795E2B96",
-      "name" : "Configuration 1",
+      "id" : "899A11F5-E1F5-4276-8626-21E448A84F73",
+      "name" : "Test Scheme Action",
       "options" : {
 
       }
     }
   ],
   "defaultOptions" : {
-    "testTimeoutsEnabled" : true
+    "codeCoverage" : false,
+    "targetForVariableExpansion" : {
+      "containerPath" : "container:Capstone.xcodeproj",
+      "identifier" : "23CF126C2D99531900B88F84",
+      "name" : "Capstone"
+    }
   },
   "testTargets" : [
     {

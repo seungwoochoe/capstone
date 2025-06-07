@@ -24,6 +24,10 @@ struct TaskStatusResponse: Codable, Equatable {
 
 struct OKResponse: Decodable { let ok: Bool }
 
+enum DownloadError: Error {
+    case documentsDirectoryUnavailable
+}
+
 // MARK: - ScanWebRepository
 
 protocol ScanWebRepository: WebRepository {
@@ -40,16 +44,19 @@ struct RealScanWebRepository: ScanWebRepository {
     let baseURL: String
     let tokenProvider: AccessTokenProvider
     let defaultsService: DefaultsService
+    let fileManager: FileManager
     
     init(session: URLSession = .shared,
          baseURL: String,
          accessTokenProvider: AccessTokenProvider,
-         defaultsService: DefaultsService
+         defaultsService: DefaultsService,
+         fileManager: FileManager
     ) {
         self.session = session
         self.baseURL = baseURL
         self.tokenProvider = accessTokenProvider
         self.defaultsService = defaultsService
+        self.fileManager = fileManager
     }
     
     func uploadScan(id: String, images: [Data]) async throws -> Bool {
@@ -95,10 +102,21 @@ struct RealScanWebRepository: ScanWebRepository {
     
     func downloadUSDZ(from url: URL) async throws -> URL {
         let (tmpURL, _) = try await session.download(from: url)
-        let dst = FileManager.default.temporaryDirectory.appendingPathComponent(url.lastPathComponent)
-        try? FileManager.default.removeItem(at: dst)
-        try FileManager.default.moveItem(at: tmpURL, to: dst)
-        return dst
+        guard let docsDir = fileManager
+                .urls(for: .documentDirectory, in: .userDomainMask)
+                .first
+        else {
+            throw DownloadError.documentsDirectoryUnavailable
+        }
+
+        let destinationURL = docsDir.appendingPathComponent(url.lastPathComponent)
+        if fileManager.fileExists(atPath: destinationURL.path) {
+            try fileManager.removeItem(at: destinationURL)
+        }
+
+        try fileManager.moveItem(at: tmpURL, to: destinationURL)
+        
+        return destinationURL
     }
 }
 

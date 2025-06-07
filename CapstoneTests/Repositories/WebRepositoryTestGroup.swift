@@ -433,6 +433,8 @@ struct WebRepositoryTestGroup {
     @Suite("RealScanWebRepositoryTests", .serialized)
     struct RealScanWebRepositoryTests {
         
+        private let fileManager = FileManager.default
+        
         private func http200(_ req: URLRequest,
                              mime: String = "application/json") -> HTTPURLResponse {
             HTTPURLResponse(url: req.url!,
@@ -455,7 +457,8 @@ struct WebRepositoryTestGroup {
                 session: URLSession(configuration: cfg),
                 baseURL: "https://api.example.com",
                 accessTokenProvider: StubAccessTokenProvider(token: "token-123"),
-                defaultsService: defaults
+                defaultsService: defaults,
+                fileManager: fileManager
             )
         }
         
@@ -580,7 +583,7 @@ struct WebRepositoryTestGroup {
             #expect(result == expected)
         }
         
-        @Test("downloadUSDZ writes file to /tmp") func downloadUSDZ() async throws {
+        @Test("downloadUSDZ writes file to Documents directory") func downloadUSDZ() async throws {
             let usdzData = Data("dummy-usdz".utf8)
             let remoteURL = URL(string: "https://cdn.example.com/model.usdz")!
             
@@ -590,7 +593,7 @@ struct WebRepositoryTestGroup {
             }
             
             let local = try await repo.downloadUSDZ(from: remoteURL)
-            #expect(FileManager.default.fileExists(atPath: local.path))
+            #expect(fileManager.fileExists(atPath: local.path))
             #expect(try Data(contentsOf: local) == usdzData)
             #expect(local.lastPathComponent == "model.usdz")
         }
