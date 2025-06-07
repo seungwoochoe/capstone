@@ -20,7 +20,7 @@ enum DeepLink: Equatable {
             return nil
         }
         
-        if let item = queryItems.first(where: { $0.name.lowercased() == "scanid" }),
+        if let item = queryItems.first(where: { $0.name == "scanID" }),
            let scanID = item.value {
             self = .showScan(scanID: scanID)
             return
@@ -31,6 +31,7 @@ enum DeepLink: Equatable {
 
 // MARK: - DeepLinksHandler
 
+@MainActor
 protocol DeepLinksHandler {
     func open(deepLink: DeepLink)
 }

@@ -26,7 +26,7 @@ struct RoomScannerView: View {
     @State private var scanName: String = ""
     @State private var arView: ARView? = nil
     
-    private let totalCaptures: Int = 60
+    private let totalCaptures: Int = 1
     private let angleThresholdDegrees: Float = 6.0  // One segment per 6° rotation.
     private let logger = Logger(subsystem: Bundle.main.bundleIdentifier!, category: #file)
     
@@ -94,7 +94,7 @@ struct RoomScannerView: View {
         .alert("Name Your Scan", isPresented: $isScanNamePromptPresented) {
             TextField("Enter scan name", text: $scanName)
             Button("OK") {
-                Task {
+                Task.detached {
                     let uploadTask = try await injected.interactors.scanInteractor.storeUploadTask(scanName: scanName, images: capturedImages)
                     try await injected.interactors.scanInteractor.upload(uploadTask)
                 }

@@ -61,7 +61,7 @@ struct RealScanWebRepository: ScanWebRepository {
     func uploadScan(id: String, images: [Data]) async throws -> Bool {
         // STEP 1
         let presignedResponse: PresignedURLsResponse = try await call(
-            endpoint: API.CreateUploadUrls(taskID: id, count: images.count)
+            endpoint: API.CreateUploadUrls(scanID: id, count: images.count)
         )
         let presigned = presignedResponse.presigned
         
@@ -89,14 +89,20 @@ struct RealScanWebRepository: ScanWebRepository {
         }
         
         let okResponse: OKResponse = try await call(
-            endpoint: API.UploadComplete(taskID: id, endpointArn: endpointArn)
+            endpoint: API.UploadComplete(scanID: id, endpointArn: endpointArn)
         )
         
         return okResponse.ok
     }
     
     func fetchTask(id: String) async throws -> TaskStatusResponse {
-        try await call(endpoint: API.TaskDetail(id: id))
+        let decoder = JSONDecoder()
+        decoder.dateDecodingStrategy = .iso8601
+        
+        return try await call(
+            endpoint: API.TaskDetail(id: id),
+            decoder: decoder
+        )
     }
     
     func downloadUSDZ(from url: URL) async throws -> URL {
@@ -127,11 +133,11 @@ private extension RealScanWebRepository {
         
         // 1) POST /upload-urls
         struct CreateUploadUrls: APICall, Encodable {
-            let taskId: String
+            let scanID: String
             let imageCount: Int
             
-            init(taskID: String, count: Int) {
-                self.taskId = taskID
+            init(scanID: String, count: Int) {
+                self.scanID = scanID
                 self.imageCount = count
             }
             
@@ -141,12 +147,12 @@ private extension RealScanWebRepository {
             func body() throws -> Data? { try JSONEncoder().encode(self) }
         }
         
-        // 2) POST /tasks/{id}/complete
+        // 2) POST /scans/{id}/complete
         struct UploadComplete: APICall {
-            let taskID: String
+            let scanID: String
             let endpointArn: String
             
-            var path: String { "/tasks/\(taskID)/complete" }
+            var path: String { "/scans/\(scanID)/complete" }
             var method: String { "POST" }
             var headers: [String : String]? { ["Content-Type": "application/json"] }
             
@@ -157,10 +163,10 @@ private extension RealScanWebRepository {
             }
         }
         
-        // 3) GET /tasks/{id}
+        // 3) GET /scans/{id}
         struct TaskDetail: APICall {
             let id: String
-            var path: String { "/tasks/\(id)" }
+            var path: String { "/scans/\(id)" }
             var method: String { "GET" }
             var headers: [String : String]? { nil }
             func body() throws -> Data? { nil }

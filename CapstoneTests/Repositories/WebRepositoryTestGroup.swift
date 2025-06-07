@@ -491,7 +491,7 @@ struct WebRepositoryTestGroup {
                     // Body must contain the correct task & count
                     if let body = req.httpBody,
                        let json = try? JSONSerialization.jsonObject(with: body) as? [String: Any] {
-                        #expect(json["taskId"] as? String == "task-1")
+                        #expect(json["scanId"] as? String == "task-1")
                         #expect(json["imageCount"] as? Int == images.count)
                     }
                     return (http200(req), presignedData)
@@ -571,8 +571,8 @@ struct WebRepositoryTestGroup {
             
             let repo = makeRepository { req in
                 #expect(req.httpMethod == "GET")
-                #expect(req.url!.path == "/tasks/abc")
-                return (http200(req), data)
+                #expect(req.url!.path == "/scans/abc")
+                return (http200(req), ScanFixtures.finishedJSON)
             }
             
             let result = try await repo.fetchTask(id: "abc")
@@ -593,5 +593,18 @@ struct WebRepositoryTestGroup {
             #expect(try Data(contentsOf: local) == usdzData)
             #expect(local.lastPathComponent == "model.usdz")
         }
+    }
+}
+
+enum ScanFixtures {
+    static var finishedJSON: Data {
+        """
+        {
+          "status": "finished",
+          "usdzUrl": "https://example.com/abc/model.usdz",
+          "processedAt": "2025-06-07T06:09:03.380631"
+        }
+        """
+            .data(using: .utf8)!
     }
 }

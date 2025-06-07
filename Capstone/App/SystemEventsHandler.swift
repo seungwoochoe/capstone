@@ -9,6 +9,7 @@ import SwiftUI
 import Combine
 import OSLog
 
+@MainActor
 protocol SystemEventsHandler {
     func sceneOpenURLContexts(_ urlContexts: Set<UIOpenURLContext>)
     func sceneDidBecomeActive()
@@ -106,9 +107,10 @@ struct RealSystemEventsHandler: SystemEventsHandler {
     }
     
     func appDidReceiveRemoteNotification(payload: [AnyHashable: Any]) async -> UIBackgroundFetchResult {
-        logger.log("App did receive remote notifictaion: \(payload)")
-        if let taskId = payload["taskId"] as? String {
-            await container.interactors.scanInteractor.handlePush(scanID: taskId)
+        logger.log("App did receive remote notification: \(payload)")
+        if let scanID = payload["scanID"] as? String {
+            await container.interactors.scanInteractor.handlePush(scanID: scanID)
+            deepLinksHandler.open(deepLink: .showScan(scanID: scanID))
             return .newData
         }
         return .noData

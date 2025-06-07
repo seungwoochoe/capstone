@@ -215,6 +215,8 @@ struct ContentView: View {
                 try await injected.interactors.scanInteractor.delete(uploadTask)
             }
         }
+        
+        loadUploadTasks()
     }
     
     private func deleteScan(offsets: IndexSet) {
@@ -225,6 +227,8 @@ struct ContentView: View {
                 try await injected.interactors.scanInteractor.delete(scan)
             }
         }
+        
+        loadScans()
     }
 }
 

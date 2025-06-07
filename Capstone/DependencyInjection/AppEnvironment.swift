@@ -9,6 +9,7 @@ import SwiftUI
 import SwiftData
 import OSLog
 
+@MainActor
 struct AppEnvironment {
     let isRunningTests: Bool
     let diContainer: DIContainer
