@@ -7,11 +7,11 @@
 
 import Foundation
 
-struct PresignedURLsResponse: Decodable {
+struct PresignedURLsResponse: Codable {
     let presigned: [URL]
 }
 
-struct TaskStatusResponse: Decodable {
+struct TaskStatusResponse: Codable, Equatable {
     let id: String
     let status: String               // "pending-upload" | "ready-for-processing" | "finished" | "failed"
     let usdzURL: URL?                // present only when status == "finished"
