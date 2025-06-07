@@ -9,7 +9,6 @@ import Foundation
 
 enum MockError: Swift.Error {
     case valueNotSet
-    case codeDataModel
 }
 
 // MARK: - URLProtocol stub used by all tests

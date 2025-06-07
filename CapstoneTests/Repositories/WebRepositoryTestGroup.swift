@@ -15,9 +15,7 @@ struct WebRepositoryTestGroup {
     @Suite("WebRepositoryTests", .serialized)
     struct WebRepositoryTests {
         
-        struct DummyModel: Codable, Equatable {
-            let name: String
-        }
+        struct DummyModel: Codable, Equatable {}
         
         struct DummyCall: APICall {
             let path: String
@@ -54,7 +52,7 @@ struct WebRepositoryTestGroup {
         
         @Test("Successful call returns decoded model")
         func testCallSuccess() async throws {
-            let expected = DummyModel(name: "Alice")
+            let expected = DummyModel()
             let data = try JSONEncoder().encode(expected)
             let httpResponse = HTTPURLResponse(
                 url: URL(string: "https://api.test/dummy")!,
@@ -172,7 +170,6 @@ struct WebRepositoryTestGroup {
             
             return RealAuthenticationWebRepository(
                 session: session,
-                baseURL: "",
                 userPoolDomain: host,
                 clientId: clientID,
                 redirectUri: redirectURI
@@ -567,8 +564,7 @@ struct WebRepositoryTestGroup {
         }
         
         @Test("fetchTask decodes correctly") func fetchTask() async throws {
-            let expected = TaskStatusResponse(id: "abc",
-                                              status: "pending-upload",
+            let expected = TaskStatusResponse(status: "pending-upload",
                                               usdzURL: nil,
                                               processedAt: nil)
             let data = try JSONEncoder().encode(expected)

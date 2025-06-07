@@ -12,7 +12,6 @@ struct AuthResponse: Codable, Equatable {
     let accessToken: String
     let refreshToken: String
     let expiresIn: Int
-    let idToken: String
     let userID: String?
 }
 
@@ -35,16 +34,14 @@ protocol AuthWebRepository {
 struct RealAuthenticationWebRepository: AuthWebRepository {
     
     private let session: URLSession
-    private let baseURL: String
     private let userPoolDomain: String
     private let clientId: String
     private let redirectUri: String
     
     private let logger = Logger(subsystem: Bundle.main.bundleIdentifier!, category: #file)
     
-    init(session: URLSession, baseURL: String, userPoolDomain: String, clientId: String, redirectUri: String) {
+    init(session: URLSession, userPoolDomain: String, clientId: String, redirectUri: String) {
         self.session = session
-        self.baseURL = baseURL
         self.userPoolDomain = userPoolDomain
         self.clientId = clientId
         self.redirectUri = redirectUri
@@ -93,7 +90,6 @@ struct RealAuthenticationWebRepository: AuthWebRepository {
             accessToken: cognito.access_token,
             refreshToken: cognito.refresh_token ?? "",
             expiresIn: cognito.expires_in,
-            idToken: cognito.id_token,
             userID: userId
         )
     }
@@ -122,7 +118,6 @@ struct RealAuthenticationWebRepository: AuthWebRepository {
             accessToken: cognito.access_token,
             refreshToken: cognito.refresh_token ?? refreshToken,
             expiresIn: cognito.expires_in,
-            idToken: cognito.id_token,
             userID: nil
         )
     }

@@ -8,8 +8,6 @@
 import Foundation
 import Combine
 
-enum ApiModel { }
-
 protocol WebRepository {
     var session: URLSession { get }
     var baseURL: String { get }

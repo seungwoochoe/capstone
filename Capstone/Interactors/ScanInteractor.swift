@@ -18,7 +18,6 @@ protocol ScanInteractor {
     func upload(_ uploadTask: UploadTask) async throws
     func delete(_ uploadTask: UploadTask) async throws
     func delete(_ scan: Scan) async throws
-    func deleteAll() async throws
     func handlePush(scanID: String) async
 }
 
@@ -129,15 +128,6 @@ struct RealScanInteractor: ScanInteractor {
         try await scanLocalRepository.delete(scan)
     }
     
-    func deleteAll() async throws {
-        for task in try await uploadTaskLocalRepository.fetch() {
-            try await delete(task)
-        }
-        for scan in try await scanLocalRepository.fetch() {
-            try await delete(scan)
-        }
-    }
-    
     // MARK: - Private helpers
     
     private func fetchResult(for scanID: String) async throws {
@@ -211,9 +201,7 @@ struct StubScanInteractor: ScanInteractor {
     func storeUploadTask(scanName: String, images: [UIImage]) async throws -> UploadTask { .sample }
     func upload(_ uploadTask: UploadTask) async throws {}
     func uploadPendingTasks() async {}
-    func export(_ scan: Scan) async throws {}
     func delete(_ uploadTask: UploadTask) async throws {}
     func delete(_ scan: Scan) async throws {}
-    func deleteAll() async throws {}
     func handlePush(scanID: String) async {}
 }

@@ -15,15 +15,6 @@ extension ProcessInfo {
     }
 }
 
-extension Result {
-    var isSuccess: Bool {
-        switch self {
-        case .success: return true
-        case .failure: return false
-        }
-    }
-}
-
 enum SCApp {
     static let name = Bundle.main.object(forInfoDictionaryKey: kCFBundleNameKey as String) as! String
     static let licence = Bundle.main.object(forInfoDictionaryKey: "NSHumanReadableCopyright") as! String

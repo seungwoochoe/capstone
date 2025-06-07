@@ -226,12 +226,6 @@ struct ContentView: View {
             }
         }
     }
-    
-    private func logOutUser() {
-        Task {
-            try await injected.interactors.scanInteractor.deleteAll()
-        }
-    }
 }
 
 // MARK: - UploadTask Row View

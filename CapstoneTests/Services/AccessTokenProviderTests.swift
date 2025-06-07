@@ -118,7 +118,6 @@ struct AccessTokenProviderTests {
             accessToken:  "brandNewAccess",
             refreshToken: "brandNewRefresh",
             expiresIn:    3600,
-            idToken:      "",
             userID:       nil
         )
         let repo = FakeAuthRepo()

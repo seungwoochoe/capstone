@@ -34,7 +34,6 @@ extension AppEnvironment {
         
         let authWebRepository = RealAuthenticationWebRepository(
             session: session,
-            baseURL: baseURL,
             userPoolDomain: userPoolDomain,
             clientId: clientId,
             redirectUri: redirectUri
