@@ -1,0 +1,24 @@
+{
+  "configurations" : [
+    {
+      "id" : "D7B134D1-39FF-4A8C-B3B9-B59B795E2B96",
+      "name" : "Configuration 1",
+      "options" : {
+
+      }
+    }
+  ],
+  "defaultOptions" : {
+    "testTimeoutsEnabled" : true
+  },
+  "testTargets" : [
+    {
+      "target" : {
+        "containerPath" : "container:Capstone.xcodeproj",
+        "identifier" : "231BD9CB2DC9DF2E00E2C613",
+        "name" : "CapstoneTests"
+      }
+    }
+  ],
+  "version" : 1
+}

@@ -96,4 +96,3 @@ enum APIError: Swift.Error, Equatable, LocalizedError {
         }
     }
 }
-

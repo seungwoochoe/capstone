@@ -39,11 +39,17 @@ struct RealScanWebRepository: ScanWebRepository {
     let session: URLSession
     let baseURL: String
     let tokenProvider: AccessTokenProvider
+    let defaultsService: DefaultsService
     
-    init(session: URLSession = .shared, baseURL: String, accessTokenProvider: AccessTokenProvider) {
+    init(session: URLSession = .shared,
+         baseURL: String,
+         accessTokenProvider: AccessTokenProvider,
+         defaultsService: DefaultsService
+    ) {
         self.session = session
         self.baseURL = baseURL
         self.tokenProvider = accessTokenProvider
+        self.defaultsService = defaultsService
     }
     
     func uploadScan(id: String, images: [Data]) async throws -> Bool {
@@ -72,7 +78,7 @@ struct RealScanWebRepository: ScanWebRepository {
         }
         
         // STEP 3
-        guard let endpointArn = Defaults[.pushEndpointArn] else {
+        guard let endpointArn = defaultsService[.pushEndpointArn] else {
             throw APIError.unexpectedResponse
         }
         

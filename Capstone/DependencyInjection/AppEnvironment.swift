@@ -49,7 +49,8 @@ extension AppEnvironment {
         let scanWebRepository = RealScanWebRepository(
             session: session,
             baseURL: baseURL,
-            accessTokenProvider: accessTokenProvider
+            accessTokenProvider: accessTokenProvider,
+            defaultsService: services.defaultsService
         )
         
         let pushTokenWebRepository = RealPushTokenWebRepository(

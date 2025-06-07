@@ -68,5 +68,10 @@ final class RealAccessTokenProvider: AccessTokenProvider {
 // MARK: - Stub
 
 struct StubAccessTokenProvider: AccessTokenProvider {
-    func validAccessToken() async throws -> String { "" }
+    let token: String
+    
+    init(token: String = "") {
+        self.token = token
+    }
+    func validAccessToken() async throws -> String { token }
 }
