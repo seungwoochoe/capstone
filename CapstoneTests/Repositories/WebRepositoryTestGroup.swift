@@ -11,7 +11,7 @@ import Testing
 
 @Suite("WebRepositoryTestGroup", .serialized)
 struct WebRepositoryTestGroup {
-        
+    
     @Suite("WebRepositoryTests", .serialized)
     struct WebRepositoryTests {
         
@@ -308,10 +308,10 @@ struct WebRepositoryTestGroup {
         }
     }
     
-
+    
     @Suite("PushTokenWebRepositoryTests", .serialized)
     struct PushTokenWebRepositoryTests {
-
+        
         private func makeRepository(
             handler: @escaping (URLRequest) throws -> (HTTPURLResponse, Data)
         ) -> RealPushTokenWebRepository {
@@ -325,7 +325,7 @@ struct WebRepositoryTestGroup {
                 accessTokenProvider: StubAccessTokenProvider(token: "TEST_TOKEN")
             )
         }
-
+        
         private func bodyData(from request: URLRequest) throws -> Data {
             if let data = request.httpBody { return data }
             guard let stream = request.httpBodyStream else { return Data() }
@@ -341,7 +341,7 @@ struct WebRepositoryTestGroup {
             }
             return buffer
         }
-
+        
         private func http200(_ req: URLRequest) -> HTTPURLResponse {
             HTTPURLResponse(
                 url: req.url!,
@@ -350,40 +350,40 @@ struct WebRepositoryTestGroup {
                 headerFields: ["Content-Type": "application/json"]
             )!
         }
-
+        
         // MARK: - Tests
-
+        
         @Test("registerPushToken sends correct request and returns endpointArn")
         func registerPushTokenSuccess() async throws {
             // Given
             let expectedArn  = "arn:aws:sns:us-east-1:123456789012:endpoint/APNS/my-app/abcdef123456"
             let responseData = try JSONEncoder().encode(RegisterPushTokenResponse(endpointArn: expectedArn))
-
+            
             let tokenBytes: [UInt8] = [0xDE, 0xAD, 0xBE, 0xEF]
             let tokenData           = Data(tokenBytes)
             let expectedHex         = tokenBytes.map { String(format: "%02x", $0) }.joined()
-
+            
             let repo = makeRepository { req in
                 // HTTP method & path
                 #expect(req.httpMethod == "POST")
                 #expect(req.url!.path == "/devices/push-token")
-
+                
                 // Headers
                 #expect(req.value(forHTTPHeaderField: "Authorization") == "Bearer TEST_TOKEN")
                 #expect(req.value(forHTTPHeaderField: "Content-Type") == "application/json")
-
+                
                 // Body JSON with correct hex token
                 let body = try self.bodyData(from: req)
                 let json = try JSONSerialization.jsonObject(with: body, options: []) as? [String: Any]
                 #expect(json?["token"] as? String == expectedHex)
-
+                
                 return (self.http200(req), responseData)
             }
-
+            
             let arn = try await repo.registerPushToken(tokenData)
             #expect(arn == expectedArn)
         }
-
+        
         @Test("registerPushToken propagates HTTP errors as APIError.httpCode")
         func registerPushTokenHTTPError() async throws {
             // Intercept and return 500 error
@@ -396,7 +396,7 @@ struct WebRepositoryTestGroup {
                 )!
                 return (resp, Data())
             }
-
+            
             do {
                 _ = try await repo.registerPushToken(Data("oops".utf8))
                 #expect(Bool(false), "Expected httpCode error but call succeeded")
@@ -406,16 +406,16 @@ struct WebRepositoryTestGroup {
                 #expect(Bool(false), "Unexpected error: \(error)")
             }
         }
-
+        
         @Test("registerPushToken throws APIError.unexpectedResponse on decoding failure")
         func registerPushTokenDecodingError() async throws {
             // Backend returns invalid JSON (missing endpointArn)
             let invalidJSON = Data("{ \"foo\": \"bar\" }".utf8)
-
+            
             let repo = makeRepository { req in
                 return (self.http200(req), invalidJSON)
             }
-
+            
             do {
                 _ = try await repo.registerPushToken(Data("1234".utf8))
                 #expect(Bool(false), "Expected unexpectedResponse but call succeeded")
@@ -427,8 +427,8 @@ struct WebRepositoryTestGroup {
         }
     }
     
-    @Suite("RealScanWebRepositoryTests", .serialized)
-    struct RealScanWebRepositoryTests {
+    @Suite("ScanWebRepositoryTests", .serialized)
+    struct ScanWebRepositoryTests {
         
         private let fileManager = FileManager.default
         
@@ -491,7 +491,7 @@ struct WebRepositoryTestGroup {
                     // Body must contain the correct task & count
                     if let body = req.httpBody,
                        let json = try? JSONSerialization.jsonObject(with: body) as? [String: Any] {
-                        #expect(json["scanId"] as? String == "task-1")
+                        #expect(json["scanID"] as? String == "task-1")
                         #expect(json["imageCount"] as? Int == images.count)
                     }
                     return (http200(req), presignedData)
@@ -511,7 +511,7 @@ struct WebRepositoryTestGroup {
             
             let ok = try await repo.uploadScan(id: "task-1", images: images)
             #expect(ok)
-            #expect(requests.all.count == 1 /*urls*/ + images.count /*PUTs*/ + 1 /*complete*/ )
+            #expect(requests.all.count == 1 /*urls*/ + images.count /*PUTs*/ + 1 /*complete*/)
         }
         
         @Test("uploadScan throws on count mismatch") func uploadScanCountMismatch() async throws {
@@ -572,7 +572,7 @@ struct WebRepositoryTestGroup {
             let repo = makeRepository { req in
                 #expect(req.httpMethod == "GET")
                 #expect(req.url!.path == "/scans/abc")
-                return (http200(req), ScanFixtures.finishedJSON)
+                return (http200(req), data)
             }
             
             let result = try await repo.fetchTask(id: "abc")
@@ -582,29 +582,23 @@ struct WebRepositoryTestGroup {
         @Test("downloadUSDZ writes file to Documents directory") func downloadUSDZ() async throws {
             let usdzData = Data("dummy-usdz".utf8)
             let remoteURL = URL(string: "https://cdn.example.com/model.usdz")!
+            let scanID = UUID().uuidString
             
             let repo = makeRepository { req in
                 #expect(req.url == remoteURL)
                 return (http200(req, mime: "model/vnd.usdz+zip"), usdzData)
             }
             
-            let local = try await repo.downloadUSDZ(from: remoteURL)
-            #expect(fileManager.fileExists(atPath: local.path))
-            #expect(try Data(contentsOf: local) == usdzData)
-            #expect(local.lastPathComponent == "model.usdz")
+            try await repo.downloadUSDZ(from: remoteURL, scanID: scanID)
+            
+            let docsDir = fileManager.urls(for: .documentDirectory, in: .userDomainMask)[0]
+            let destURL = docsDir
+                .appendingPathComponent(scanID)
+                .appendingPathComponent(remoteURL.lastPathComponent)
+            
+            #expect(fileManager.fileExists(atPath: destURL.path))
+            #expect(try Data(contentsOf: destURL) == usdzData)
+            #expect(destURL.lastPathComponent == "model.usdz")
         }
-    }
-}
-
-enum ScanFixtures {
-    static var finishedJSON: Data {
-        """
-        {
-          "status": "finished",
-          "usdzUrl": "https://example.com/abc/model.usdz",
-          "processedAt": "2025-06-07T06:09:03.380631"
-        }
-        """
-            .data(using: .utf8)!
     }
 }

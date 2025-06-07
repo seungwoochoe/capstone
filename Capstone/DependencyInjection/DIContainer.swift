@@ -39,11 +39,13 @@ extension DIContainer {
     struct Services {
         let defaultsService: DefaultsService
         let keychainService: KeychainService
+        let fileManager: FileManager
         
         static var stub: Self {
             .init(
                 defaultsService: StubDefaultsService(),
-                keychainService: StubKeychainService()
+                keychainService: StubKeychainService(),
+                fileManager: FileManager.default
             )
         }
     }

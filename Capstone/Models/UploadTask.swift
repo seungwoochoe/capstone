@@ -8,7 +8,7 @@
 import SwiftUI
 import SwiftData
 
-struct UploadTask: Identifiable {
+struct UploadTask: Identifiable, Equatable {
     let id: UUID
     var name: String
     let imageURLs: [URL]
@@ -29,9 +29,9 @@ enum UploadTaskStatus: Codable, Equatable {
         case .pendingUpload:
             return "Pending upload"
         case .uploading:
-            return "Uploading"
+            return "Uploading…"
         case .waitingForResult:
-            return "Waiting for result"
+            return "Waiting for result…"
         case .failedUpload:
             return "Failed upload"
         case .failedProcessing:

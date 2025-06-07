@@ -20,13 +20,13 @@ struct Model3DViewer: View {
     var body: some View {
         NavigationStack {
             ZStack {
-                USDZModelView(modelURL: scan.usdzURL)
+                USDZModelView(modelURL: scan.usdzURL(fileManager: injected.services.fileManager))
                     .ignoresSafeArea()
                 
                 VStack {
                     Spacer()
                     HStack(spacing: 60) {
-                        ShareLink(item: scan.usdzURL) {
+                        ShareLink(item: scan.usdzURL(fileManager: injected.services.fileManager)) {
                             Label("Export", systemImage: "square.and.arrow.up")
                                 .padding()
                                 .background(Capsule().fill(Color.blue.opacity(0.9)))
@@ -65,11 +65,16 @@ struct Model3DViewer: View {
 private struct USDZModelView: UIViewRepresentable {
     
     let modelURL: URL
+    private let logger = Logger(subsystem: Bundle.main.bundleIdentifier!, category: "USDZModelView")
     
     func makeUIView(context: Context) -> SCNView {
         let sceneView = SCNView()
-        if let scene = try? SCNScene(url: modelURL) {
+        
+        do {
+            let scene = try SCNScene(url: modelURL, options: nil)
             sceneView.scene = scene
+        } catch {
+            logger.error("Failed to load USDZ: \(error.localizedDescription)")
         }
         
         sceneView.allowsCameraControl = true
@@ -87,8 +92,7 @@ private struct PLYModelView: UIViewRepresentable {
     
     let plyURL: URL
     
-    private let logger = Logger(subsystem: Bundle.main.bundleIdentifier!,
-                                category: String(describing: PLYModelView.self))
+    private let logger = Logger(subsystem: Bundle.main.bundleIdentifier!, category: "PLYModelView")
     
     func makeUIView(context: Context) -> SCNView {
         let scnView = SCNView()

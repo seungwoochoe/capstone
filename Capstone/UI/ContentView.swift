@@ -55,7 +55,13 @@ struct ContentView: View {
                 loadUploadTasks()
                 loadScans()
             }
-            .onReceive(routingUpdate) { newValue in
+            .onReceive(injected.appState.updates(for: \.uploadTasks)) {
+                uploadTasks = $0
+            }
+            .onReceive(injected.appState.updates(for: \.scans)) {
+                scans = $0
+            }
+            .onReceive(injected.appState.updates(for: \.routing)) { newValue in
                 if let scan = scans.first(where: { $0.id == newValue.selectedScanID }) {
                     selected = scan
                 }
@@ -178,32 +184,16 @@ struct ContentView: View {
     }
     
     // MARK: - Helpers
-    
-    private var routingUpdate: AnyPublisher<AppState.ViewRouting, Never> {
-        injected.appState.updates(for: \.routing)
-    }
-    
+
     private func loadUploadTasks() {
         Task.detached {
-            let uploadTasks = try await injected.interactors.scanInteractor.fetchUploadTasks()
-            
-            await MainActor.run {
-                withAnimation {
-                    self.uploadTasks = uploadTasks
-                }
-            }
+             try await injected.interactors.scanInteractor.fetchUploadTasks()
         }
     }
     
     private func loadScans() {
         Task.detached {
-            let scans = try await injected.interactors.scanInteractor.fetchScans()
-            
-            await MainActor.run {
-                withAnimation {
-                    self.scans = scans
-                }
-            }
+            try await injected.interactors.scanInteractor.fetchScans()
         }
     }
     
@@ -258,12 +248,15 @@ struct UploadTaskRowView: View {
 // MARK: - Room Row View
 
 struct ScanRowView: View {
+    
+    @Environment(\.injected) private var injected
+    
     let scan: Scan
     
     var body: some View {
         HStack(spacing: 18) {
             USDZThumbnailView(
-                url: scan.usdzURL,
+                url: scan.usdzURL(fileManager: injected.services.fileManager),
                 size: CGSize(width: 50, height: 50)
             )
             Text(scan.name)

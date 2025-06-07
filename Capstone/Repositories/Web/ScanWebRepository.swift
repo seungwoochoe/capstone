@@ -25,6 +25,7 @@ struct OKResponse: Decodable { let ok: Bool }
 
 enum DownloadError: Error {
     case documentsDirectoryUnavailable
+    case invalidStatus(code: Int?, body: String)
 }
 
 // MARK: - ScanWebRepository
@@ -32,7 +33,7 @@ enum DownloadError: Error {
 protocol ScanWebRepository: WebRepository {
     func uploadScan(id: String, images: [Data]) async throws -> Bool
     func fetchTask(id: String) async throws -> TaskStatusResponse
-    func downloadUSDZ(from url: URL) async throws -> URL
+    func downloadUSDZ(from url: URL, scanID: String) async throws
 }
 
 // MARK: - RealScanWebRepository
@@ -105,23 +106,32 @@ struct RealScanWebRepository: ScanWebRepository {
         )
     }
     
-    func downloadUSDZ(from url: URL) async throws -> URL {
-        let (tmpURL, _) = try await session.download(from: url)
-        guard let docsDir = fileManager
-                .urls(for: .documentDirectory, in: .userDomainMask)
-                .first
-        else {
-            throw DownloadError.documentsDirectoryUnavailable
-        }
-
-        let destinationURL = docsDir.appendingPathComponent(url.lastPathComponent)
-        if fileManager.fileExists(atPath: destinationURL.path) {
-            try fileManager.removeItem(at: destinationURL)
-        }
-
-        try fileManager.moveItem(at: tmpURL, to: destinationURL)
+    func downloadUSDZ(from url: URL, scanID: String) async throws {
+        let (tmpURL, response) = try await session.download(from: url)
         
-        return destinationURL
+        guard
+            let httpURLResponse = response as? HTTPURLResponse,
+            HTTPCodes.success.contains(httpURLResponse.statusCode)
+        else {
+            let body = try? String(contentsOf: tmpURL, encoding: .utf8)
+            throw DownloadError.invalidStatus(code: (response as? HTTPURLResponse)?.statusCode,
+                                              body: body ?? "<unreadable>")
+        }
+        
+        let docsDir = fileManager.urls(for: .documentDirectory, in: .userDomainMask)[0]
+        
+        let scanDir = docsDir.appendingPathComponent(scanID)
+        try fileManager.createDirectory(
+            at: scanDir,
+            withIntermediateDirectories: true
+        )
+        
+        let destURL = scanDir.appendingPathComponent(url.lastPathComponent)
+        if fileManager.fileExists(atPath: destURL.path) {
+            try fileManager.removeItem(at: destURL)
+        }
+        
+        try fileManager.moveItem(at: tmpURL, to: destURL)
     }
 }
 

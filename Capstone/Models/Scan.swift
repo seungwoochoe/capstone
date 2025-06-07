@@ -11,8 +11,14 @@ import SwiftData
 struct Scan: Identifiable, Hashable {
     let id: UUID
     let name: String
-    let usdzURL: URL
     let processedDate: Date
+    
+    func usdzURL(fileManager: FileManager) -> URL {
+        fileManager
+            .urls(for: .documentDirectory, in: .userDomainMask)[0]
+            .appendingPathComponent(self.id.uuidString)
+            .appendingPathComponent("model.usdz")
+    }
 }
 
 extension Persistence {
@@ -21,16 +27,13 @@ extension Persistence {
     final class Scan {
         @Attribute(.unique) var id: UUID
         var name: String
-        var usdzURL: URL
         var processedDate: Date
         
         init(id: UUID,
              name: String,
-             usdzURL: URL,
              processedDate: Date = Date()) {
             self.id = id
             self.name = name
-            self.usdzURL = usdzURL
             self.processedDate = processedDate
         }
     }
@@ -42,7 +45,6 @@ extension Persistence.Scan {
         self.init(
             id: scan.id,
             name: scan.name,
-            usdzURL: scan.usdzURL,
             processedDate: scan.processedDate
         )
     }
@@ -51,7 +53,6 @@ extension Persistence.Scan {
         return Scan(
             id: id,
             name: name,
-            usdzURL: usdzURL,
             processedDate: processedDate
         )
     }

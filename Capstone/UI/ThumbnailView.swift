@@ -114,5 +114,8 @@ struct USDZThumbnailView: View {
 }
 
 #Preview {
-    USDZThumbnailView(url: Scan.sample.usdzURL, size: CGSize(width: 50, height: 50))
+    USDZThumbnailView(
+        url: Bundle.main.url(forResource: "sample", withExtension: "usdz")!,
+        size: CGSize(width: 50, height: 50)
+    )
 }

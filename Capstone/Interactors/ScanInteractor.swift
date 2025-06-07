@@ -11,8 +11,8 @@ import OSLog
 // MARK: - ScanInteractor
 
 protocol ScanInteractor {
-    func fetchUploadTasks() async throws -> [UploadTask]
-    func fetchScans() async throws -> [Scan]
+    func fetchUploadTasks() async throws
+    func fetchScans() async throws
     func storeUploadTask(scanName: String, images: [UIImage]) async throws -> UploadTask
     func uploadPendingTasks() async
     func upload(_ uploadTask: UploadTask) async throws
@@ -25,28 +25,31 @@ protocol ScanInteractor {
 
 struct RealScanInteractor: ScanInteractor {
     
+    private let appState: Store<AppState>
     private let webRepository: ScanWebRepository
     private let uploadTaskLocalRepository: UploadTaskLocalRepository
     private let scanLocalRepository: ScanLocalRepository
     private let fileManager: FileManager
     private let logger = Logger(subsystem: Bundle.main.bundleIdentifier!, category: #file)
     
-    init(webRepository: ScanWebRepository,
+    init(appState: Store<AppState>,
+         webRepository: ScanWebRepository,
          uploadTaskLocalRepository: UploadTaskLocalRepository,
          scanLocalRepository: ScanLocalRepository,
          fileManager: FileManager) {
+        self.appState = appState
         self.webRepository = webRepository
         self.uploadTaskLocalRepository = uploadTaskLocalRepository
         self.scanLocalRepository = scanLocalRepository
         self.fileManager = fileManager
     }
     
-    func fetchUploadTasks() async throws -> [UploadTask] {
-        try await uploadTaskLocalRepository.fetch()
+    func fetchUploadTasks() async throws {
+        try await publishUploadTasks()
     }
     
-    func fetchScans() async throws -> [Scan] {
-        try await scanLocalRepository.fetch()
+    func fetchScans() async throws {
+        try await publishScans()
     }
     
     func storeUploadTask(scanName: String, images: [UIImage]) async throws -> UploadTask {
@@ -62,6 +65,7 @@ struct RealScanInteractor: ScanInteractor {
                                     uploadStatus: .pendingUpload)
         
         try await uploadTaskLocalRepository.store(uploadTask)
+        try await publishUploadTasks()
         return uploadTask
     }
     
@@ -98,11 +102,13 @@ struct RealScanInteractor: ScanInteractor {
             
             mutableTask.uploadStatus = .waitingForResult
             try await uploadTaskLocalRepository.update(mutableTask)
+            try await publishUploadTasks()
         } catch {
             logger.error("Upload failed: \(error)")
             mutableTask.retryCount += 1
             mutableTask.uploadStatus = .failedUpload
             try await uploadTaskLocalRepository.update(mutableTask)
+            try await publishUploadTasks()
             throw error
         }
     }
@@ -122,10 +128,12 @@ struct RealScanInteractor: ScanInteractor {
     func delete(_ uploadTask: UploadTask) async throws {
         try await uploadTaskLocalRepository.delete(uploadTask)
         try deleteImagesFromDisk(for: uploadTask)
+        try await publishUploadTasks()
     }
     
     func delete(_ scan: Scan) async throws {
         try await scanLocalRepository.delete(scan)
+        try await publishScans()
     }
     
     // MARK: - Private helpers
@@ -145,20 +153,21 @@ struct RealScanInteractor: ScanInteractor {
             if response.status == "failed" {
                 uploadTask.uploadStatus = .failedProcessing
                 try? await uploadTaskLocalRepository.update(uploadTask)
+                try await publishUploadTasks()
             }
             return      // still processing
         }
         
         // 2) Download the .usdz
         guard let usdzURL = response.usdzURL else { return }
-        let localUSDZ = try await webRepository.downloadUSDZ(from: usdzURL)
+        try await webRepository.downloadUSDZ(from: usdzURL, scanID: scanID)
         
         // 3) Persist as Scan
         let scan = Scan(id: uploadTask.id,
                         name: uploadTask.name,
-                        usdzURL: localUSDZ,
                         processedDate: response.processedAt ?? Date())
         try await scanLocalRepository.store(scan)
+        try await publishScans()
         
         // 4) Delete the uploadTask
         try await delete(uploadTask)
@@ -185,10 +194,28 @@ struct RealScanInteractor: ScanInteractor {
     }
     
     private func deleteImagesFromDisk(for uploadTask: UploadTask) throws {
-        guard let docs = fileManager.urls(for: .documentDirectory, in: .userDomainMask).first else { return }
+        guard let docs = fileManager.urls(for: .documentDirectory,
+                                          in: .userDomainMask).first else { return }
         let folder = docs.appendingPathComponent(uploadTask.id.uuidString)
-        if fileManager.fileExists(atPath: folder.path) {
-            try fileManager.removeItem(at: folder)
+        
+        try fileManager.contentsOfDirectory(at: folder, includingPropertiesForKeys: nil)
+            .filter { $0.pathExtension == "jpg" }
+            .forEach {
+                try fileManager.removeItem(at: $0)
+            }
+    }
+    
+    private func publishScans() async throws {
+        let scans = try await scanLocalRepository.fetch()
+        await MainActor.run {
+            appState[\.scans] = scans
+        }
+    }
+    
+    private func publishUploadTasks() async throws {
+        let tasks = try await uploadTaskLocalRepository.fetch()
+        await MainActor.run {
+            appState[\.uploadTasks] = tasks
         }
     }
 }
@@ -196,8 +223,8 @@ struct RealScanInteractor: ScanInteractor {
 // MARK: - Stub
 
 struct StubScanInteractor: ScanInteractor {
-    func fetchUploadTasks() async throws -> [UploadTask] { [] }
-    func fetchScans() async throws -> [Scan] { [] }
+    func fetchUploadTasks() async throws {}
+    func fetchScans() async throws {}
     func storeUploadTask(scanName: String, images: [UIImage]) async throws -> UploadTask { .sample }
     func upload(_ uploadTask: UploadTask) async throws {}
     func uploadPendingTasks() async {}

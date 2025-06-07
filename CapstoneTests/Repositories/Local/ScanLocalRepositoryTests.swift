@@ -25,7 +25,6 @@ struct RealScanLocalRepositoryTests {
         let sample = Scan(
             id: UUID(),
             name: "Sample Scan",
-            usdzURL: URL(string: "https://example.com/scan.usdz")!,
             processedDate: Date()
         )
         try await repository.store(sample)
@@ -34,7 +33,6 @@ struct RealScanLocalRepositoryTests {
         let fetched = try #require(scans.first)
         #expect(fetched.id == sample.id)
         #expect(fetched.name == sample.name)
-        #expect(fetched.usdzURL == sample.usdzURL)
         #expect(fetched.processedDate == sample.processedDate)
     }
     
@@ -44,7 +42,6 @@ struct RealScanLocalRepositoryTests {
         var sample = Scan(
             id: UUID(),
             name: "Original Scan",
-            usdzURL: URL(string: "https://example.com/original.usdz")!,
             processedDate: Date()
         )
         try await repository.store(sample)
@@ -54,7 +51,6 @@ struct RealScanLocalRepositoryTests {
         sample = Scan(
             id: sample.id,
             name: "Updated Scan",
-            usdzURL: URL(string: "https://example.com/updated.usdz")!,
             processedDate: newDate
         )
         try await repository.update(sample)
@@ -62,7 +58,6 @@ struct RealScanLocalRepositoryTests {
         let scans = try await repository.fetch()
         let updated = try #require(scans.first)
         #expect(updated.name == "Updated Scan")
-        #expect(updated.usdzURL == sample.usdzURL)
         #expect(updated.processedDate == sample.processedDate)
     }
     
@@ -71,7 +66,6 @@ struct RealScanLocalRepositoryTests {
         let sample = Scan(
             id: UUID(),
             name: "To Delete",
-            usdzURL: URL(string: "https://example.com/delete.usdz")!,
             processedDate: Date()
         )
         try await repository.store(sample)
@@ -86,7 +80,6 @@ struct RealScanLocalRepositoryTests {
         let nonExistent = Scan(
             id: UUID(),
             name: "Nonexistent",
-            usdzURL: URL(string: "https://example.com/nonexistent.usdz")!,
             processedDate: Date()
         )
         await #expect {
@@ -104,7 +97,6 @@ struct RealScanLocalRepositoryTests {
         let nonExistent = Scan(
             id: UUID(),
             name: "Nonexistent",
-            usdzURL: URL(string: "https://example.com/nonexistent.usdz")!,
             processedDate: Date()
         )
         await #expect {

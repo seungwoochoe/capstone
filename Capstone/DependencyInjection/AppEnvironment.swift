@@ -30,7 +30,6 @@ extension AppEnvironment {
         
         let appState = Store<AppState>(AppState(isSignedIn: services.defaultsService[.userID] != nil))
         let session = configuredURLSession()
-        let fileManager = configuredFileManager()
         let modelContainer = configuredModelContainer()
         
         let authWebRepository = RealAuthenticationWebRepository(
@@ -51,7 +50,7 @@ extension AppEnvironment {
             baseURL: baseURL,
             accessTokenProvider: accessTokenProvider,
             defaultsService: services.defaultsService,
-            fileManager: fileManager
+            fileManager: services.fileManager
         )
         
         let pushTokenWebRepository = RealPushTokenWebRepository(
@@ -72,7 +71,7 @@ extension AppEnvironment {
             appState: appState,
             webRepositories: webRepositories,
             localRepositories: localRepositories,
-            fileManager: fileManager,
+            fileManager: services.fileManager,
             keychainService: services.keychainService,
             defaultsService: services.defaultsService
         )
@@ -112,10 +111,6 @@ extension AppEnvironment {
         return URLSession(configuration: configuration)
     }
     
-    private static func configuredFileManager() -> FileManager {
-        return FileManager.default
-    }
-    
     private static func configuredModelContainer() -> ModelContainer {
         do {
             return try ModelContainer.appModelContainer()
@@ -129,9 +124,12 @@ extension AppEnvironment {
     private static func configuredServices() -> DIContainer.Services {
         let defaultsService = RealDefaultsService()
         let keychainService = RealKeychainService()
+        let fileManager = FileManager.default
+        
         return .init(
             defaultsService: defaultsService,
-            keychainService: keychainService
+            keychainService: keychainService,
+            fileManager: fileManager
         )
     }
     
@@ -153,6 +151,7 @@ extension AppEnvironment {
         defaultsService: DefaultsService
     ) -> DIContainer.Interactors {
         let scan = RealScanInteractor(
+            appState: appState,
             webRepository: webRepositories.scanWebRepository,
             uploadTaskLocalRepository: localRepositories.uploadTaskLocalRepository,
             scanLocalRepository: localRepositories.scanLocalRepository,

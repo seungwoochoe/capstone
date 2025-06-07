@@ -17,7 +17,6 @@ extension Scan {
         return Scan(
             id: UUID(),
             name: "Sample Scan",
-            usdzURL: modelURL,
             processedDate: .now
         )
     }()
@@ -30,7 +29,6 @@ extension Scan {
         return Scan(
             id: UUID(),
             name: "Sample Scan",
-            usdzURL: modelURL,
             processedDate: .now
         )
     }()

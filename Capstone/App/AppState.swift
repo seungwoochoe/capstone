@@ -13,6 +13,9 @@ struct AppState: Equatable {
     var system = System()
     var permissions = Permissions()
     
+    var scans: [Scan] = []
+    var uploadTasks: [UploadTask] = []
+    
     init(isSignedIn: Bool = false) {
         self.auth = Auth(isSignedIn: isSignedIn)
     }
