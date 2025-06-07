@@ -7,7 +7,7 @@
 
 import Foundation
 
-struct RegisterPushTokenResponse: Decodable {
+struct RegisterPushTokenResponse: Codable {
     let endpointArn: String
 }
 

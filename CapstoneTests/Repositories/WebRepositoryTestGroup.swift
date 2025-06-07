@@ -137,8 +137,8 @@ struct WebRepositoryTestGroup {
         }
     }
     
-    @Suite("AuthWebRepositoryTests", .serialized)
-    struct RealAuthenticationWebRepositoryTests {
+    @Suite("AuthenticationWebRepositoryTests", .serialized)
+    struct AuthenticationWebRepositoryTests {
         
         private let host        = "test.auth.us-east-1.amazoncognito.com"
         private let clientID    = "abc123"
@@ -311,7 +311,126 @@ struct WebRepositoryTestGroup {
         }
     }
     
-    @Suite("RealScanWebRepository", .serialized)
+
+    @Suite("PushTokenWebRepositoryTests", .serialized)
+    struct PushTokenWebRepositoryTests {
+
+        private func makeRepository(
+            handler: @escaping (URLRequest) throws -> (HTTPURLResponse, Data)
+        ) -> RealPushTokenWebRepository {
+            let config = URLSessionConfiguration.ephemeral
+            config.protocolClasses = [MockURLProtocol.self]
+            let session = URLSession(configuration: config)
+            MockURLProtocol.handler = handler
+            return RealPushTokenWebRepository(
+                session: session,
+                baseURL: "https://api.test",
+                accessTokenProvider: StubAccessTokenProvider(token: "TEST_TOKEN")
+            )
+        }
+
+        private func bodyData(from request: URLRequest) throws -> Data {
+            if let data = request.httpBody { return data }
+            guard let stream = request.httpBodyStream else { return Data() }
+            stream.open(); defer { stream.close() }
+            var buffer = Data()
+            let size = 1024
+            let ptr   = UnsafeMutablePointer<UInt8>.allocate(capacity: size)
+            defer { ptr.deallocate() }
+            while stream.hasBytesAvailable {
+                let read = stream.read(ptr, maxLength: size)
+                guard read > 0 else { break }
+                buffer.append(ptr, count: read)
+            }
+            return buffer
+        }
+
+        private func http200(_ req: URLRequest) -> HTTPURLResponse {
+            HTTPURLResponse(
+                url: req.url!,
+                statusCode: 200,
+                httpVersion: nil,
+                headerFields: ["Content-Type": "application/json"]
+            )!
+        }
+
+        // MARK: - Tests
+
+        @Test("registerPushToken sends correct request and returns endpointArn")
+        func registerPushTokenSuccess() async throws {
+            // Given
+            let expectedArn  = "arn:aws:sns:us-east-1:123456789012:endpoint/APNS/my-app/abcdef123456"
+            let responseData = try JSONEncoder().encode(RegisterPushTokenResponse(endpointArn: expectedArn))
+
+            let tokenBytes: [UInt8] = [0xDE, 0xAD, 0xBE, 0xEF]
+            let tokenData           = Data(tokenBytes)
+            let expectedHex         = tokenBytes.map { String(format: "%02x", $0) }.joined()
+
+            let repo = makeRepository { req in
+                // HTTP method & path
+                #expect(req.httpMethod == "POST")
+                #expect(req.url!.path == "/devices/push-token")
+
+                // Headers
+                #expect(req.value(forHTTPHeaderField: "Authorization") == "Bearer TEST_TOKEN")
+                #expect(req.value(forHTTPHeaderField: "Content-Type") == "application/json")
+
+                // Body JSON with correct hex token
+                let body = try self.bodyData(from: req)
+                let json = try JSONSerialization.jsonObject(with: body, options: []) as? [String: Any]
+                #expect(json?["token"] as? String == expectedHex)
+
+                return (self.http200(req), responseData)
+            }
+
+            let arn = try await repo.registerPushToken(tokenData)
+            #expect(arn == expectedArn)
+        }
+
+        @Test("registerPushToken propagates HTTP errors as APIError.httpCode")
+        func registerPushTokenHTTPError() async throws {
+            // Intercept and return 500 error
+            let repo = makeRepository { req in
+                let resp = HTTPURLResponse(
+                    url: req.url!,
+                    statusCode: 500,
+                    httpVersion: nil,
+                    headerFields: nil
+                )!
+                return (resp, Data())
+            }
+
+            do {
+                _ = try await repo.registerPushToken(Data("oops".utf8))
+                #expect(Bool(false), "Expected httpCode error but call succeeded")
+            } catch let APIError.httpCode(code) {
+                #expect(code == 500)
+            } catch {
+                #expect(Bool(false), "Unexpected error: \(error)")
+            }
+        }
+
+        @Test("registerPushToken throws APIError.unexpectedResponse on decoding failure")
+        func registerPushTokenDecodingError() async throws {
+            // Backend returns invalid JSON (missing endpointArn)
+            let invalidJSON = Data("{ \"foo\": \"bar\" }".utf8)
+
+            let repo = makeRepository { req in
+                return (self.http200(req), invalidJSON)
+            }
+
+            do {
+                _ = try await repo.registerPushToken(Data("1234".utf8))
+                #expect(Bool(false), "Expected unexpectedResponse but call succeeded")
+            } catch APIError.unexpectedResponse {
+                #expect(true)
+            } catch {
+                #expect(Bool(false), "Unexpected error: \(error)")
+            }
+        }
+    }
+    
+    @Suite("RealScanWebRepositoryTests", .serialized)
     struct RealScanWebRepositoryTests {
         
         private func http200(_ req: URLRequest,
