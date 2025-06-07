@@ -31,7 +31,6 @@ enum DeepLink: Equatable {
 
 // MARK: - DeepLinksHandler
 
-@MainActor
 protocol DeepLinksHandler {
     func open(deepLink: DeepLink)
 }
@@ -48,23 +47,27 @@ struct RealDeepLinksHandler: DeepLinksHandler {
     func open(deepLink: DeepLink) {
         switch deepLink {
         case .showScan(let scanID):
+            logger.info("Handling showScan deep link for ID: \(scanID, privacy: .public)")
             let routeToScan = {
+                guard let uuid = UUID(uuidString: scanID) else {
+                    logger.error("Invalid scanID UUID string: \(scanID, privacy: .public)")
+                    return
+                }
                 self.container.appState.bulkUpdate {
-                    guard let scanID = UUID(uuidString: scanID) else {
-                        logger.error("Failed to parse scanID: \(scanID)")
-                        return
-                    }
-                    $0.routing.selectedScanID = scanID
+                    $0.routing.selectedScanID = uuid
+                    logger.debug("Updated selectedScanID in app state to: \(uuid.uuidString, privacy: .public)")
                 }
             }
             
             let defaultRouting = AppState.ViewRouting()
             if container.appState.value.routing != defaultRouting {
-                self.container.appState[\.routing] = defaultRouting
-                let delay: DispatchTime = .now() + (ProcessInfo.processInfo.isRunningTests ? 0 : 1.5)
-                DispatchQueue.main.asyncAfter(deadline: delay, execute: routeToScan)
-            } else {
+                logger.debug("Current routing is not default, skipping deep link handling")
+                return
+            }
+            
+            Task { @MainActor in
                 routeToScan()
+                logger.info("Deep link navigation to scan view executed")
             }
         }
     }

@@ -65,6 +65,8 @@ struct RealScanInteractor: ScanInteractor {
                                     uploadStatus: .pendingUpload)
         
         try await uploadTaskLocalRepository.store(uploadTask)
+        logger.info("Stored upload task \(uploadTask.id.uuidString, privacy: .public)")
+        
         try await publishUploadTasks()
         return uploadTask
     }
@@ -76,16 +78,19 @@ struct RealScanInteractor: ScanInteractor {
                 $0.uploadStatus == .pendingUpload ||
                 $0.uploadStatus == .failedUpload
             }
+            logger.debug("Found \(tasksToUpload.count) tasks to upload")
             
             for task in tasksToUpload {
                 do {
+                    logger.debug("Uploading task \(task.id.uuidString, privacy: .public)")
                     try await upload(task)
                 } catch {
-                    logger.error("Failed uploading task \(task.id): \(error.localizedDescription)")
+                    logger.error("Failed uploading task \(task.id.uuidString, privacy: .public): \(error.localizedDescription, privacy: .public)")
                 }
             }
+            logger.debug("Completed processing pending tasks")
         } catch {
-            logger.error("Could not fetch upload tasks: \(error.localizedDescription)")
+            logger.error("Could not fetch upload tasks: \(error.localizedDescription, privacy: .public)")
         }
     }
     
@@ -95,16 +100,21 @@ struct RealScanInteractor: ScanInteractor {
         try await uploadTaskLocalRepository.update(mutableTask)
         
         do {
-            let imageDatas = try uploadTask.imageURLs.map { try Data(contentsOf: $0) }
+            logger.debug("Reading image data for upload task")
+            let imageDatas = try uploadTask.imageURLs.map { url in
+                try Data(contentsOf: url)
+            }
+            logger.debug("Uploading \(imageDatas.count) images to web repository for task \(uploadTask.id.uuidString, privacy: .public)")
             
             _ = try await webRepository.uploadScan(id: uploadTask.id.uuidString,
                                                    images: imageDatas)
+            logger.info("Upload successful for task \(uploadTask.id.uuidString, privacy: .public)")
             
             mutableTask.uploadStatus = .waitingForResult
             try await uploadTaskLocalRepository.update(mutableTask)
             try await publishUploadTasks()
         } catch {
-            logger.error("Upload failed: \(error)")
+            logger.error("Upload failed for task \(uploadTask.id.uuidString, privacy: .public): \(error.localizedDescription, privacy: .public)")
             mutableTask.retryCount += 1
             mutableTask.uploadStatus = .failedUpload
             try await uploadTaskLocalRepository.update(mutableTask)
@@ -113,63 +123,65 @@ struct RealScanInteractor: ScanInteractor {
         }
     }
     
-    // Push notification entry point
-    
     func handlePush(scanID: String) async {
         do {
             try await fetchResult(for: scanID)
         } catch {
-            logger.error("Failed to fetch result for scanID \(scanID): \(error)")
+            logger.error("Failed to fetch result for scanID \(scanID, privacy: .public): \(error.localizedDescription, privacy: .public)")
         }
     }
-    
-    // Delete
     
     func delete(_ uploadTask: UploadTask) async throws {
         try await uploadTaskLocalRepository.delete(uploadTask)
         try deleteImagesFromDisk(for: uploadTask)
+        logger.info("Deleted upload task and images for \(uploadTask.id.uuidString, privacy: .public)")
         try await publishUploadTasks()
     }
     
     func delete(_ scan: Scan) async throws {
         try await scanLocalRepository.delete(scan)
+        logger.info("Deleted scan \(scan.id.uuidString, privacy: .public)")
         try await publishScans()
     }
     
     // MARK: - Private helpers
     
     private func fetchResult(for scanID: String) async throws {
+        logger.debug("Fetching result for scanID \(scanID, privacy: .public)")
         
         guard var uploadTask = try await uploadTaskLocalRepository
             .fetch().first(where: { $0.id.uuidString == scanID }) else {
-            logger.info("No upload task found for scanID \(scanID)")
+            logger.info("No upload task found for scanID \(scanID, privacy: .public)")
             return
         }
         
-        // 1) Poll task state
         let response = try await webRepository.fetchTask(id: scanID)
+        logger.debug("Received task status '\(response.status, privacy: .public)' for scanID \(scanID, privacy: .public)")
         
         guard response.status == "finished" else {
             if response.status == "failed" {
                 uploadTask.uploadStatus = .failedProcessing
                 try? await uploadTaskLocalRepository.update(uploadTask)
                 try await publishUploadTasks()
+                logger.error("Processing failed for scanID \(scanID, privacy: .public)")
             }
-            return      // still processing
+            return
         }
         
-        // 2) Download the .usdz
-        guard let usdzURL = response.usdzURL else { return }
+        guard let usdzURL = response.usdzURL else {
+            logger.warning("No USDZ URL provided for finished scanID \(scanID, privacy: .public)")
+            return
+        }
+        logger.debug("Downloading USDZ from \(usdzURL.absoluteString, privacy: .public) for scanID \(scanID, privacy: .public)")
         try await webRepository.downloadUSDZ(from: usdzURL, scanID: scanID)
         
-        // 3) Persist as Scan
         let scan = Scan(id: uploadTask.id,
                         name: uploadTask.name,
                         processedDate: response.processedAt ?? Date())
         try await scanLocalRepository.store(scan)
+        logger.info("Stored scan record for \(scan.id.uuidString, privacy: .public)")
         try await publishScans()
         
-        // 4) Delete the uploadTask
         try await delete(uploadTask)
     }
     
@@ -177,20 +189,24 @@ struct RealScanInteractor: ScanInteractor {
     
     private func createFolder(for id: UUID) throws -> URL {
         guard let docs = fileManager.urls(for: .documentDirectory, in: .userDomainMask).first else {
+            logger.error("Document directory not found when creating folder for id \(id.uuidString, privacy: .public)")
             throw CocoaError(.fileNoSuchFile)
         }
         let folder = docs.appendingPathComponent(id.uuidString)
         try fileManager.createDirectory(at: folder, withIntermediateDirectories: true)
+        logger.debug("Directory created at \(folder.path)")
         return folder
     }
     
     private func saveImagesToDisk(images: [UIImage], in folderURL: URL) throws -> [URL] {
-        try images.enumerated().compactMap { idx, img in
+        let savedURLs = try images.enumerated().compactMap { (idx, img) -> URL? in
             guard let data = img.jpegData(compressionQuality: 0.3) else { return nil }
             let url = folderURL.appendingPathComponent("\(idx + 1).jpg")
             try data.write(to: url)
             return url
         }
+        logger.debug("Saved \(savedURLs.count) images to disk at \(folderURL.path)")
+        return savedURLs
     }
     
     private func deleteImagesFromDisk(for uploadTask: UploadTask) throws {
@@ -203,6 +219,7 @@ struct RealScanInteractor: ScanInteractor {
             .forEach {
                 try fileManager.removeItem(at: $0)
             }
+        logger.debug("Removed images at \(folder.path)")
     }
     
     private func publishScans() async throws {
@@ -210,6 +227,7 @@ struct RealScanInteractor: ScanInteractor {
         await MainActor.run {
             appState[\.scans] = scans
         }
+        logger.debug("Published scans to app state")
     }
     
     private func publishUploadTasks() async throws {
@@ -217,6 +235,7 @@ struct RealScanInteractor: ScanInteractor {
         await MainActor.run {
             appState[\.uploadTasks] = tasks
         }
+        logger.debug("Published upload tasks to app state")
     }
 }
 
