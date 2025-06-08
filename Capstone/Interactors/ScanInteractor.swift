@@ -54,8 +54,7 @@ struct RealScanInteractor: ScanInteractor {
     
     func storeUploadTask(scanName: String, images: [UIImage]) async throws -> UploadTask {
         let taskID = UUID()
-        let folderURL = try createFolder(for: taskID)
-        let imageURLs = try saveImagesToDisk(images: images, in: folderURL)
+        let imageURLs = try saveImagesToDisk(images: images, forTask: taskID)
         
         let uploadTask = UploadTask(id: taskID,
                                     name: scanName,
@@ -113,6 +112,7 @@ struct RealScanInteractor: ScanInteractor {
             mutableTask.uploadStatus = .waitingForResult
             try await uploadTaskLocalRepository.update(mutableTask)
             try await publishUploadTasks()
+            
         } catch {
             logger.error("Upload failed for task \(uploadTask.id.uuidString, privacy: .public): \(error.localizedDescription, privacy: .public)")
             mutableTask.retryCount += 1
@@ -187,39 +187,50 @@ struct RealScanInteractor: ScanInteractor {
     
     // MARK: File‑system utilities
     
-    private func createFolder(for id: UUID) throws -> URL {
+    private func imagesFolderURL(for id: UUID) throws -> URL {
         guard let docs = fileManager.urls(for: .documentDirectory, in: .userDomainMask).first else {
-            logger.error("Document directory not found when creating folder for id \(id.uuidString, privacy: .public)")
+            logger.error("Could not locate Documents directory for task \(id.uuidString, privacy: .public)")
             throw CocoaError(.fileNoSuchFile)
         }
-        let folder = docs.appendingPathComponent(id.uuidString)
-        try fileManager.createDirectory(at: folder, withIntermediateDirectories: true)
-        logger.debug("Directory created at \(folder.path)")
+        let folder = docs.appendingPathComponent(id.uuidString, isDirectory: true)
+        
+        if !fileManager.fileExists(atPath: folder.path) {
+            try fileManager.createDirectory(at: folder,
+                                            withIntermediateDirectories: true,
+                                            attributes: nil)
+            logger.debug("Created image folder at \(folder.path, privacy: .public)")
+        }
         return folder
     }
     
-    private func saveImagesToDisk(images: [UIImage], in folderURL: URL) throws -> [URL] {
-        let savedURLs = try images.enumerated().compactMap { (idx, img) -> URL? in
-            guard let data = img.jpegData(compressionQuality: 0.3) else { return nil }
-            let url = folderURL.appendingPathComponent("\(idx + 1).jpg")
-            try data.write(to: url)
-            return url
+    private func saveImagesToDisk(images: [UIImage], forTask id: UUID) throws -> [URL] {
+        let folderURL = try imagesFolderURL(for: id)
+        var savedURLs: [URL] = []
+        
+        for (index, image) in images.enumerated() {
+            let filename = "\(index + 1).jpg"
+            let fileURL = folderURL.appendingPathComponent(filename)
+            
+            guard let data = image.jpegData(compressionQuality: 0.3) else {
+                logger.error("Could not encode image \(index) for task \(id.uuidString, privacy: .public)")
+                continue
+            }
+            try data.write(to: fileURL, options: .atomic)
+            savedURLs.append(fileURL)
         }
         logger.debug("Saved \(savedURLs.count) images to disk at \(folderURL.path)")
         return savedURLs
     }
     
     private func deleteImagesFromDisk(for uploadTask: UploadTask) throws {
-        guard let docs = fileManager.urls(for: .documentDirectory,
-                                          in: .userDomainMask).first else { return }
-        let folder = docs.appendingPathComponent(uploadTask.id.uuidString)
+        let folder = try imagesFolderURL(for: uploadTask.id)
         
         try fileManager.contentsOfDirectory(at: folder, includingPropertiesForKeys: nil)
-            .filter { $0.pathExtension == "jpg" }
-            .forEach {
-                try fileManager.removeItem(at: $0)
-            }
-        logger.debug("Removed images at \(folder.path)")
+                    .filter { $0.pathExtension == "jpg" }
+                    .forEach {
+                        try fileManager.removeItem(at: $0)
+                    }
+        logger.debug("Deleted image folder at \(folder.path, privacy: .public)")
     }
     
     private func publishScans() async throws {
