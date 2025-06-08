@@ -7,6 +7,9 @@
 
 import Foundation
 import Combine
+import OSLog
+
+private let logger = Logger(subsystem: Bundle.main.bundleIdentifier!, category: #file)
 
 protocol WebRepository {
     var session: URLSession { get }
@@ -26,24 +29,41 @@ extension WebRepository {
         decoder: Decoder = JSONDecoder(),
         httpCodes: HTTPCodes = .success
     ) async throws -> Value
-    where Value: Decodable, Decoder: TopLevelDecoder, Decoder.Input == Data
-    {
+    where Value: Decodable, Decoder: TopLevelDecoder, Decoder.Input == Data {
         var request = try endpoint.urlRequest(baseURL: baseURL)
         let bearer = try await authorizationHeader()
         request.setValue(bearer, forHTTPHeaderField: "Authorization")
         
-        let (data, response) = try await session.data(for: request)
-        guard let code = (response as? HTTPURLResponse)?.statusCode else {
-            throw APIError.unexpectedResponse
-        }
-        guard httpCodes.contains(code) else {
-            throw APIError.httpCode(code)
-        }
+        logger.debug("Performing network request to URL: \(request.url?.absoluteString ?? "<invalid URL>")")
         
         do {
-            return try decoder.decode(Value.self, from: data)
+            let (data, response) = try await session.data(for: request)
+            guard let httpResponse = response as? HTTPURLResponse else {
+                logger.error("Unexpected response type: \(type(of: response))")
+                throw APIError.unexpectedResponse
+            }
+            
+            let code = httpResponse.statusCode
+            logger.debug("Received response with status code: \(code)")
+            
+            guard httpCodes.contains(code) else {
+                logger.error("HTTP error code: \(code), expected: \(httpCodes)")
+                throw APIError.httpCode(code)
+            }
+            
+            do {
+                let result = try decoder.decode(Value.self, from: data)
+                logger.debug("Successfully decoded response into \(Value.self)")
+                return result
+            } catch {
+                let body = String(data: data, encoding: .utf8) ?? "<non-textual data>"
+                logger.error("Decoding failed with error: \(error). Response body: \(body)")
+                throw APIError.unexpectedResponse
+            }
+            
         } catch {
-            throw APIError.unexpectedResponse
+            logger.error("Network request failed with error: \(error)")
+            throw error
         }
     }
 }
