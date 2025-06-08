@@ -11,6 +11,8 @@ import OSLog
 // MARK: - ScanInteractor
 
 protocol ScanInteractor {
+    func updateSortField(_ sortField: SortField) async
+    func updateSortOrder(_ sortOrder: SortOrder) async
     func fetchUploadTasks() async throws
     func fetchScans() async throws
     func storeUploadTask(scanName: String, images: [UIImage]) async throws -> UploadTask
@@ -23,12 +25,13 @@ protocol ScanInteractor {
 
 // MARK: - RealScanInteractor
 
-struct RealScanInteractor: ScanInteractor {
+class RealScanInteractor: ScanInteractor {
     
     private let appState: Store<AppState>
     private let webRepository: ScanWebRepository
     private let uploadTaskLocalRepository: UploadTaskLocalRepository
     private let scanLocalRepository: ScanLocalRepository
+    private var defaultsService: DefaultsService
     private let fileManager: FileManager
     private let logger = Logger(subsystem: Bundle.main.bundleIdentifier!, category: #file)
     
@@ -36,12 +39,28 @@ struct RealScanInteractor: ScanInteractor {
          webRepository: ScanWebRepository,
          uploadTaskLocalRepository: UploadTaskLocalRepository,
          scanLocalRepository: ScanLocalRepository,
+         defaultsService: DefaultsService,
          fileManager: FileManager) {
         self.appState = appState
         self.webRepository = webRepository
         self.uploadTaskLocalRepository = uploadTaskLocalRepository
         self.scanLocalRepository = scanLocalRepository
+        self.defaultsService = defaultsService
         self.fileManager = fileManager
+    }
+    
+    func updateSortField(_ sortField: SortField) async {
+        defaultsService[.sortField] = sortField
+        await MainActor.run {
+            appState[\.sortField] = sortField
+        }
+    }
+    
+    func updateSortOrder(_ sortOrder: SortOrder) async {
+        defaultsService[.sortOrder] = sortOrder
+        await MainActor.run {
+            appState[\.sortOrder] = sortOrder
+        }
     }
     
     func fetchUploadTasks() async throws {
@@ -253,6 +272,8 @@ struct RealScanInteractor: ScanInteractor {
 // MARK: - Stub
 
 struct StubScanInteractor: ScanInteractor {
+    func updateSortField(_ sortField: SortField) async {}
+    func updateSortOrder(_ sortOrder: SortOrder) async {}
     func fetchUploadTasks() async throws {}
     func fetchScans() async throws {}
     func storeUploadTask(scanName: String, images: [UIImage]) async throws -> UploadTask { .sample }

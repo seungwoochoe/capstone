@@ -28,7 +28,11 @@ extension AppEnvironment {
         
         let services = configuredServices()
         
-        let appState = Store<AppState>(AppState(isSignedIn: services.defaultsService[.userID] != nil))
+        let appState = Store<AppState>(AppState(
+            isSignedIn: services.defaultsService[.userID] != nil,
+            sortField: services.defaultsService[.sortField],
+            sortOrder: services.defaultsService[.sortOrder]
+        ))
         let session = configuredURLSession()
         let modelContainer = configuredModelContainer()
         
@@ -155,6 +159,7 @@ extension AppEnvironment {
             webRepository: webRepositories.scanWebRepository,
             uploadTaskLocalRepository: localRepositories.uploadTaskLocalRepository,
             scanLocalRepository: localRepositories.scanLocalRepository,
+            defaultsService: defaultsService,
             fileManager: fileManager
         )
         

@@ -13,11 +13,19 @@ struct AppState {
     var system = System()
     var permissions = Permissions()
     
+    var sortField: SortField
+    var sortOrder: SortOrder
     var scans: [Scan] = []
     var uploadTasks: [UploadTask] = []
     
-    init(isSignedIn: Bool = false) {
+    init(
+        isSignedIn: Bool = false,
+        sortField: SortField = .createdAt,
+        sortOrder: SortOrder = .descending
+    ) {
         self.auth = Auth(isSignedIn: isSignedIn)
+        self.sortField = sortField
+        self.sortOrder = sortOrder
     }
 }
 

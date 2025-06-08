@@ -9,7 +9,31 @@ import SwiftUI
 import Combine
 import OSLog
 
-// MARK: - Main Content View
+enum SortField: Int, CaseIterable, Defaults.Serializable {
+    case createdAt
+    case title
+    
+    var label: String {
+        switch self {
+        case .createdAt: return "Date Created"
+        case .title:     return "Title"
+        }
+    }
+}
+
+enum SortOrder: Int, CaseIterable, Defaults.Serializable {
+    case ascending
+    case descending
+    
+    var label: String {
+        switch self {
+        case .ascending:  return "Ascending"
+        case .descending: return "Descending"
+        }
+    }
+}
+
+// MARK: - Content View
 
 struct ContentView: View {
     
@@ -17,9 +41,12 @@ struct ContentView: View {
     @Environment(\.colorScheme) private var colorScheme
     @Environment(\.openURL) private var openURL
     
+    @State private var sortField: SortField = .createdAt
+    @State private var sortOrder: SortOrder = .ascending
+    
     @State private var scans: [Scan] = []
     @State private var uploadTasks: [UploadTask] = []
-
+    
     @State private var searchIsPresented: Bool = false
     @State private var searchText: String = ""
     @State private var showingScanner: Bool = false
@@ -29,31 +56,69 @@ struct ContentView: View {
     
     private let logger = Logger(subsystem: Bundle.main.bundleIdentifier!, category: #file)
     
-    var filteredUploadTasks: [UploadTask] {
-        if searchText.isEmpty {
-            return uploadTasks
-        } else {
-            return uploadTasks.filter {
-                $0.name.lowercased().contains(searchText.lowercased())
+    // Filter + Sort Logic
+    
+    private var filteredAndSortedUploadTasks: [UploadTask] {
+        let base = searchText.isEmpty
+        ? uploadTasks
+        : uploadTasks.filter {
+            $0.name.localizedCaseInsensitiveContains(searchText)
+        }
+        return base.sorted { a, b in
+            switch sortField {
+            case .title:
+                let result = a.name.localizedCaseInsensitiveCompare(b.name)
+                if sortOrder == .ascending {
+                    return result == .orderedAscending
+                } else {
+                    return result == .orderedDescending
+                }
+            case .createdAt:
+                return sortOrder == .ascending
+                ? a.createdAt < b.createdAt
+                : a.createdAt > b.createdAt
             }
         }
     }
     
-    var filteredScans: [Scan] {
-        if searchText.isEmpty {
-            return scans
-        } else {
-            return scans.filter {
-                $0.name.lowercased().contains(searchText.lowercased())
+    private var filteredAndSortedScans: [Scan] {
+        let base = searchText.isEmpty
+        ? scans
+        : scans.filter {
+            $0.name.localizedCaseInsensitiveContains(searchText)
+        }
+        return base.sorted { a, b in
+            switch sortField {
+            case .title:
+                let result = a.name.localizedCaseInsensitiveCompare(b.name)
+                if sortOrder == .ascending {
+                    return result == .orderedAscending
+                } else {
+                    return result == .orderedDescending
+                }
+            case .createdAt:
+                return sortOrder == .ascending
+                ? a.createdAt < b.createdAt
+                : a.createdAt > b.createdAt
             }
         }
     }
+    
+    // MARK: - Body
     
     var body: some View {
         content
             .onAppear {
-                loadUploadTasks()
-                loadScans()
+                Task.detached {
+                    try await injected.interactors.scanInteractor.fetchUploadTasks()
+                    try await injected.interactors.scanInteractor.fetchScans()
+                }
+            }
+            .onReceive(injected.appState.updates(for: \.sortField)) {
+                sortField = $0
+            }
+            .onReceive(injected.appState.updates(for: \.sortOrder)) {
+                sortOrder = $0
             }
             .onReceive(injected.appState.updates(for: \.uploadTasks)) {
                 uploadTasks = $0
@@ -71,8 +136,12 @@ struct ContentView: View {
     var content: some View {
         NavigationStack {
             ZStack(alignment: .bottom) {
+                
                 Group {
-                    if !searchIsPresented && filteredUploadTasks.isEmpty && filteredScans.isEmpty {
+                    if !searchIsPresented
+                        && filteredAndSortedUploadTasks.isEmpty
+                        && filteredAndSortedScans.isEmpty {
+                        
                         ScrollView {
                             ContentUnavailableView {
                                 Label("Start Scanning", systemImage: "camera")
@@ -83,22 +152,22 @@ struct ContentView: View {
                         }
                         .padding(.bottom, 40)
                         .defaultScrollAnchor(.center, for: .alignment)
-                    }
-                    else {
+                        
+                    } else {
                         List {
                             Section {
-                                ForEach(filteredUploadTasks) { uploadTask in
-                                    UploadTaskRowView(uploadTask: uploadTask)
+                                ForEach(filteredAndSortedUploadTasks) { task in
+                                    UploadTaskRowView(uploadTask: task)
                                 }
                                 .onDelete(perform: deleteUploadTasks)
                             } header: {
-                                if !filteredUploadTasks.isEmpty {
+                                if !filteredAndSortedUploadTasks.isEmpty {
                                     Text("Pending")
                                 }
                             }
                             
                             Section {
-                                ForEach(filteredScans) { scan in
+                                ForEach(filteredAndSortedScans) { scan in
                                     Button {
                                         selected = scan
                                     } label: {
@@ -107,23 +176,55 @@ struct ContentView: View {
                                 }
                                 .onDelete(perform: deleteScan)
                             } header: {
-                                if !filteredScans.isEmpty {
+                                if !filteredAndSortedScans.isEmpty {
                                     Text("Completed")
                                 }
                             }
                         }
                     }
                 }
-                .animation(.default, value: filteredUploadTasks)
-                .animation(.default, value: filteredScans)
+                .animation(.default, value: filteredAndSortedUploadTasks)
+                .animation(.default, value: filteredAndSortedScans)
                 .navigationTitle("3D Room Scanner")
                 .navigationBarTitleDisplayMode(.automatic)
                 .toolbar {
-                    ToolbarItem {
+                    ToolbarItemGroup(placement: .navigationBarTrailing) {
                         Button {
                             showingSettings = true
                         } label: {
                             Image(systemName: "gear")
+                        }
+                        
+                        Menu {
+                            Picker("Sort Field", selection: Binding<SortField>(
+                                get: { sortField },
+                                set: { newField in
+                                    Task {
+                                        await injected.interactors.scanInteractor.updateSortField(newField)
+                                    }
+                                }
+                            )) {
+                                ForEach(SortField.allCases, id: \.self) { field in
+                                    Text(field.label).tag(field)
+                                }
+                            }
+                            
+                            Divider()
+                            
+                            Picker("Sort Order", selection: Binding<SortOrder>(
+                                get: { sortOrder },
+                                set: { newOrder in
+                                    Task {
+                                        await injected.interactors.scanInteractor.updateSortOrder(newOrder)
+                                    }
+                                }
+                            )) {
+                                ForEach(SortOrder.allCases, id: \.self) { order in
+                                    Text(order.label).tag(order)
+                                }
+                            }
+                        } label: {
+                            Image(systemName: "arrow.up.arrow.down")
                         }
                     }
                 }
@@ -135,14 +236,14 @@ struct ContentView: View {
                             Button {
                                 Task {
                                     do {
-                                        try await injected.interactors.userPermissions.request(permission: .pushNotifications)
+                                        try await injected.interactors.userPermissions.request(permission: .camera)
                                         if injected.appState[\.permissions.camera] == .granted {
                                             showingScanner = true
                                         } else {
                                             showingCameraAccessDeniedAlert = true
                                         }
                                     } catch {
-                                        logger.error("Failed to request notification permission: \(error)")
+                                        logger.error("Camera permission failed: \(error)")
                                     }
                                 }
                             } label: {
@@ -167,7 +268,10 @@ struct ContentView: View {
                 Text("Please enable Camera access in Settings to scan your room.")
             }
             .overlay {
-                if searchIsPresented && filteredUploadTasks.isEmpty && filteredScans.isEmpty {
+                if searchIsPresented
+                    && filteredAndSortedUploadTasks.isEmpty
+                    && filteredAndSortedScans.isEmpty {
+                    
                     ContentUnavailableView.search(text: searchText)
                 }
             }
@@ -178,8 +282,6 @@ struct ContentView: View {
                     }
             }
             .fullScreenCover(isPresented: $showingScanner) {
-                loadUploadTasks()
-            } content: {
                 RoomScannerView()
             }
             .sheet(isPresented: $showingSettings) {
@@ -189,41 +291,23 @@ struct ContentView: View {
     }
     
     // MARK: - Helpers
-
-    private func loadUploadTasks() {
-        Task.detached {
-             try await injected.interactors.scanInteractor.fetchUploadTasks()
-        }
-    }
-    
-    private func loadScans() {
-        Task.detached {
-            try await injected.interactors.scanInteractor.fetchScans()
-        }
-    }
     
     private func deleteUploadTasks(offsets: IndexSet) {
-        for index in offsets {
-            let uploadTask = filteredUploadTasks[index]
-            
+        for idx in offsets {
+            let task = filteredAndSortedUploadTasks[idx]
             Task.detached {
-                try await injected.interactors.scanInteractor.delete(uploadTask)
+                try await injected.interactors.scanInteractor.delete(task)
             }
         }
-        
-        loadUploadTasks()
     }
     
     private func deleteScan(offsets: IndexSet) {
-        for index in offsets {
-            let scan = filteredScans[index]
-            
+        for idx in offsets {
+            let scan = filteredAndSortedScans[idx]
             Task.detached {
                 try await injected.interactors.scanInteractor.delete(scan)
             }
         }
-        
-        loadScans()
     }
 }
 
