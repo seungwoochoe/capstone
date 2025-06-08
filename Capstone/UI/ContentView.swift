@@ -114,6 +114,8 @@ struct ContentView: View {
                         }
                     }
                 }
+                .animation(.default, value: filteredUploadTasks)
+                .animation(.default, value: filteredScans)
                 .navigationTitle("3D Room Scanner")
                 .navigationBarTitleDisplayMode(.automatic)
                 .toolbar {
@@ -204,7 +206,7 @@ struct ContentView: View {
         for index in offsets {
             let uploadTask = filteredUploadTasks[index]
             
-            Task {
+            Task.detached {
                 try await injected.interactors.scanInteractor.delete(uploadTask)
             }
         }
@@ -216,7 +218,7 @@ struct ContentView: View {
         for index in offsets {
             let scan = filteredScans[index]
             
-            Task {
+            Task.detached {
                 try await injected.interactors.scanInteractor.delete(scan)
             }
         }
