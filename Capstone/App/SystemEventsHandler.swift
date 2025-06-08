@@ -128,7 +128,6 @@ struct RealSystemEventsHandler: SystemEventsHandler {
         if let scanID = payload["scanID"] as? String {
             logger.info("Remote notification contains scanID: \(scanID, privacy: .public)")
             await container.interactors.scanInteractor.handlePush(scanID: scanID)
-            deepLinksHandler.open(deepLink: .showScan(scanID: scanID))
             return .newData
         }
         logger.debug("Remote notification payload did not contain a scanID")

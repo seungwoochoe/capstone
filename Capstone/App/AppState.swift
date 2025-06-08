@@ -7,7 +7,7 @@
 
 import Foundation
 
-struct AppState: Equatable {
+struct AppState {
     var auth: Auth
     var routing = ViewRouting()
     var system = System()
@@ -24,7 +24,7 @@ struct AppState: Equatable {
 // MARK: - Auth
 
 extension AppState {
-    struct Auth: Equatable {
+    struct Auth {
         var isSignedIn: Bool
     }
 }
@@ -40,7 +40,7 @@ extension AppState {
 // MARK: - System State
 
 extension AppState {
-    struct System: Equatable {
+    struct System {
         var isActive: Bool = false
     }
 }
@@ -48,7 +48,7 @@ extension AppState {
 // MARK: - Permissions
 
 extension AppState {
-    struct Permissions: Equatable {
+    struct Permissions {
         var camera: Permission.Status = .unknown
         var push: Permission.Status = .unknown
     }

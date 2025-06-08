@@ -171,6 +171,9 @@ struct ContentView: View {
             }
             .navigationDestination(item: $selected) { scan in
                 Model3DViewer(scan: scan)
+                    .onDisappear {
+                        injected.appState[\.routing.selectedScanID] = nil
+                    }
             }
             .fullScreenCover(isPresented: $showingScanner) {
                 loadUploadTasks()
