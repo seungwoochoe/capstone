@@ -9,7 +9,6 @@
     }
   ],
   "defaultOptions" : {
-    "codeCoverage" : false,
     "targetForVariableExpansion" : {
       "containerPath" : "container:Capstone.xcodeproj",
       "identifier" : "23CF126C2D99531900B88F84",

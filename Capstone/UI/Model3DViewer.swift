@@ -83,45 +83,41 @@ private struct USDZModelView: UIViewRepresentable {
         return sceneView
     }
     
-    func updateUIView(_ uiView: SCNView, context: Context) {
-        // No dynamic updates
-    }
+    func updateUIView(_ uiView: SCNView, context: Context) {}
 }
 
-private struct PLYModelView: UIViewRepresentable {
+struct PLYModelView: UIViewRepresentable {
     
     let plyURL: URL
-    
     private let logger = Logger(subsystem: Bundle.main.bundleIdentifier!, category: "PLYModelView")
     
     func makeUIView(context: Context) -> SCNView {
         let scnView = SCNView()
-        scnView.allowsCameraControl      = true
+        scnView.allowsCameraControl = true
         scnView.autoenablesDefaultLighting = true
-        scnView.backgroundColor          = .white
+        scnView.backgroundColor = .white
         
         do {
             let geometry = try PLYParser.geometry(from: plyURL)
-            let scene    = SCNScene()
-            
-            let node     = SCNNode(geometry: geometry)
+            let scene = SCNScene()
+            let node = SCNNode(geometry: geometry)
             scene.rootNode.addChildNode(node)
             
-            // Centre the point cloud around the origin so initial camera framing looks good.
+            // Center the model
             let (min, max) = node.boundingBox
-            let center     = SCNVector3((min.x + max.x) * 0.5,
-                                        (min.y + max.y) * 0.5,
-                                        (min.z + max.z) * 0.5)
-            node.position  = SCNVector3(-center.x, -center.y, -center.z)
+            let center = SCNVector3((min.x + max.x) * 0.5,
+                                    (min.y + max.y) * 0.5,
+                                    (min.z + max.z) * 0.5)
+            node.position = SCNVector3(-center.x, -center.y, -center.z)
             
             scnView.scene = scene
         } catch {
-            logger.error("Could not load PLY file: \(error.localizedDescription)")
+            logger.error("PLY load failed: \(error.localizedDescription)")
         }
         return scnView
     }
     
-    func updateUIView(_ uiView: SCNView, context: Context) { /* no-op */ }
+    func updateUIView(_ uiView: SCNView, context: Context) {}
 }
 
 private enum PLYParser {
