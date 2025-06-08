@@ -35,7 +35,7 @@ final actor RealScanLocalRepository: ScanLocalRepository {
         
         try modelContext.transaction {
             existing.name = scan.name
-            existing.processedDate = scan.processedDate
+            existing.createdAt = scan.createdAt
         }
     }
     

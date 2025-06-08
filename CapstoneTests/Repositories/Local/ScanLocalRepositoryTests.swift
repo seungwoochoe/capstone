@@ -25,7 +25,7 @@ struct RealScanLocalRepositoryTests {
         let sample = Scan(
             id: UUID(),
             name: "Sample Scan",
-            processedDate: Date()
+            createdAt: Date()
         )
         try await repository.store(sample)
         
@@ -33,7 +33,7 @@ struct RealScanLocalRepositoryTests {
         let fetched = try #require(scans.first)
         #expect(fetched.id == sample.id)
         #expect(fetched.name == sample.name)
-        #expect(fetched.processedDate == sample.processedDate)
+        #expect(fetched.createdAt == sample.createdAt)
     }
     
     @Test("update modifies existing scan")
@@ -42,7 +42,7 @@ struct RealScanLocalRepositoryTests {
         var sample = Scan(
             id: UUID(),
             name: "Original Scan",
-            processedDate: Date()
+            createdAt: Date()
         )
         try await repository.store(sample)
         
@@ -51,14 +51,14 @@ struct RealScanLocalRepositoryTests {
         sample = Scan(
             id: sample.id,
             name: "Updated Scan",
-            processedDate: newDate
+            createdAt: newDate
         )
         try await repository.update(sample)
         
         let scans = try await repository.fetch()
         let updated = try #require(scans.first)
         #expect(updated.name == "Updated Scan")
-        #expect(updated.processedDate == sample.processedDate)
+        #expect(updated.createdAt == sample.createdAt)
     }
     
     @Test("delete removes the scan")
@@ -66,7 +66,7 @@ struct RealScanLocalRepositoryTests {
         let sample = Scan(
             id: UUID(),
             name: "To Delete",
-            processedDate: Date()
+            createdAt: Date()
         )
         try await repository.store(sample)
         try await repository.delete(sample)
@@ -80,7 +80,7 @@ struct RealScanLocalRepositoryTests {
         let nonExistent = Scan(
             id: UUID(),
             name: "Nonexistent",
-            processedDate: Date()
+            createdAt: Date()
         )
         await #expect {
             try await repository.update(nonExistent)
@@ -97,7 +97,7 @@ struct RealScanLocalRepositoryTests {
         let nonExistent = Scan(
             id: UUID(),
             name: "Nonexistent",
-            processedDate: Date()
+            createdAt: Date()
         )
         await #expect {
             try await repository.delete(nonExistent)

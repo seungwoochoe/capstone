@@ -177,7 +177,7 @@ struct RealScanInteractor: ScanInteractor {
         
         let scan = Scan(id: uploadTask.id,
                         name: uploadTask.name,
-                        processedDate: response.processedAt ?? Date())
+                        createdAt: response.createdAt ?? Date())
         try await scanLocalRepository.store(scan)
         logger.info("Stored scan record for \(scan.id.uuidString, privacy: .public)")
         try await publishScans()

@@ -12,12 +12,12 @@ struct PresignedURLsResponse: Codable {
 }
 
 struct TaskStatusResponse: Codable, Equatable {
-    let status: String               // "pending-upload" | "ready-for-processing" | "finished" | "failed"
-    let usdzURL: URL?                // present only when status == "finished"
-    let processedAt: Date?           // optional ISO-8601 timestamp
+    let status: String     // "pending-upload" | "ready-for-processing" | "finished" | "failed"
+    let usdzURL: URL?
+    let createdAt: Date?   // ISO-8601 timestamp
     
     enum CodingKeys: String, CodingKey {
-        case status, usdzURL = "usdzUrl", processedAt
+        case status, usdzURL = "usdzUrl", createdAt
     }
 }
 

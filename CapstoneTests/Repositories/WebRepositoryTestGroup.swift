@@ -566,7 +566,7 @@ struct WebRepositoryTestGroup {
         @Test("fetchTask decodes correctly") func fetchTask() async throws {
             let expected = TaskStatusResponse(status: "pending-upload",
                                               usdzURL: nil,
-                                              processedAt: nil)
+                                              createdAt: nil)
             let data = try JSONEncoder().encode(expected)
             
             let repo = makeRepository { req in

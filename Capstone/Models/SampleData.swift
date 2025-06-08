@@ -17,7 +17,7 @@ extension Scan {
         return Scan(
             id: UUID(),
             name: "Sample Scan",
-            processedDate: .now
+            createdAt: .now
         )
     }()
     
@@ -29,7 +29,7 @@ extension Scan {
         return Scan(
             id: UUID(),
             name: "Sample Scan",
-            processedDate: .now
+            createdAt: .now
         )
     }()
 }
