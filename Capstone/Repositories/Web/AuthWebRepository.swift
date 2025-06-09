@@ -50,8 +50,8 @@ struct RealAuthenticationWebRepository: AuthWebRepository {
     func makeHostedUISignInURL(state: String, nonce: String) -> URL {
         var comps = URLComponents()
         comps.scheme = "https"
-        comps.host   = userPoolDomain
-        comps.path   = "/oauth2/authorize"
+        comps.host = userPoolDomain
+        comps.path = "/oauth2/authorize"
         comps.queryItems = [
             .init(name: "response_type",     value: "code"),
             .init(name: "client_id",         value: clientId),
@@ -61,6 +61,7 @@ struct RealAuthenticationWebRepository: AuthWebRepository {
             .init(name: "state",             value: state),
             .init(name: "nonce",             value: nonce)
         ]
+        logger.debug("Constructed Hosted UI sign-in URL.")
         return comps.url!
     }
     
@@ -79,13 +80,14 @@ struct RealAuthenticationWebRepository: AuthWebRepository {
         
         let (data, response) = try await session.data(for: req)
         guard (response as? HTTPURLResponse)?.statusCode == 200 else {
-            logger.error("Got unexpected status code: \(String(describing: response))")
+            logger.error("Exchange failed. Unexpected status code: \(String(describing: response)).")
             throw APIError.unexpectedResponse
         }
         
         let cognito = try JSONDecoder().decode(CognitoTokenResponse.self, from: data)
         let userId = try extractUserID(from: cognito.id_token)
         
+        logger.debug("Token exchange successful.")
         return AuthResponse(
             accessToken: cognito.access_token,
             refreshToken: cognito.refresh_token ?? "",
@@ -108,11 +110,12 @@ struct RealAuthenticationWebRepository: AuthWebRepository {
         
         let (data, response) = try await session.data(for: req)
         guard (response as? HTTPURLResponse)?.statusCode == 200 else {
-            logger.error("Got unexpected status code: \(String(describing: response))")
+            logger.error("Token refresh failed. Unexpected status code: \(String(describing: response)).")
             throw APIError.unexpectedResponse
         }
         
         let cognito = try JSONDecoder().decode(CognitoTokenResponse.self, from: data)
+        logger.debug("Token refresh successful.")
         
         return AuthResponse(
             accessToken: cognito.access_token,
@@ -123,37 +126,36 @@ struct RealAuthenticationWebRepository: AuthWebRepository {
     }
     
     private func extractUserID(from idToken: String) throws -> String {
-        
         struct Payload: Decodable {
             let sub: String
         }
         
         let parts = idToken.split(separator: ".")
         guard parts.count == 3 else {
-            logger.error("Invalid JWT format—expected 3 parts but got \(parts.count, privacy: .public)")
+            logger.error("Invalid JWT format. Expected 3 parts but got \(parts.count, privacy: .public).")
             throw APIError.unexpectedResponse
         }
-
+        
         var base64 = parts[1]
             .replacingOccurrences(of: "-", with: "+")
             .replacingOccurrences(of: "_", with: "/")
-
+        
         let padLen = 4 - (base64.count % 4)
         if padLen < 4 {
             base64 += String(repeating: "=", count: padLen)
         }
-
+        
         guard let payloadData = Data(base64Encoded: base64) else {
-            logger.error("Failed to Base64-decode payload (length \(base64.count), padding added: \(padLen))")
+            logger.error("Base64 decoding failed for JWT payload. Length: \(base64.count). Padding added: \(padLen).")
             throw APIError.unexpectedResponse
         }
-
+        
         do {
             let payload = try JSONDecoder().decode(Payload.self, from: payloadData)
-            logger.debug("Extracted userID from id_token: \(payload.sub, privacy: .private)")
+            logger.debug("Extracted userID from id_token: \(payload.sub, privacy: .private).")
             return payload.sub
         } catch {
-            logger.error("Payload JSON decode error: \(error.localizedDescription, privacy: .public)")
+            logger.error("Failed to decode JWT payload. Error: \(error.localizedDescription, privacy: .public).")
             throw error
         }
     }

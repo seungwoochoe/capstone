@@ -30,39 +30,41 @@ extension WebRepository {
         httpCodes: HTTPCodes = .success
     ) async throws -> Value
     where Value: Decodable, Decoder: TopLevelDecoder, Decoder.Input == Data {
+        
         var request = try endpoint.urlRequest(baseURL: baseURL)
         let bearer = try await authorizationHeader()
         request.setValue(bearer, forHTTPHeaderField: "Authorization")
         
-        logger.debug("Performing network request to URL: \(request.url?.absoluteString ?? "<invalid URL>")")
+        logger.debug("Sending request to URL: \(request.url?.absoluteString ?? "<invalid URL>").")
         
         do {
             let (data, response) = try await session.data(for: request)
+            
             guard let httpResponse = response as? HTTPURLResponse else {
-                logger.error("Unexpected response type: \(type(of: response))")
+                logger.error("Unexpected response type: \(type(of: response)).")
                 throw APIError.unexpectedResponse
             }
             
             let code = httpResponse.statusCode
-            logger.debug("Received response with status code: \(code)")
+            logger.debug("Received response with status code: \(code).")
             
             guard httpCodes.contains(code) else {
-                logger.error("HTTP error code: \(code), expected: \(httpCodes)")
+                logger.error("Unexpected HTTP status code: \(code). Expected: \(httpCodes).")
                 throw APIError.httpCode(code)
             }
             
             do {
                 let result = try decoder.decode(Value.self, from: data)
-                logger.debug("Successfully decoded response into \(Value.self)")
+                logger.debug("Decoded response as type: \(Value.self).")
                 return result
             } catch {
                 let body = String(data: data, encoding: .utf8) ?? "<non-textual data>"
-                logger.error("Decoding failed with error: \(error). Response body: \(body)")
+                logger.error("Decoding failed. Error: \(error). Body: \(body, privacy: .public).")
                 throw APIError.unexpectedResponse
             }
             
         } catch {
-            logger.error("Network request failed with error: \(error)")
+            logger.error("Network request failed. Error: \(error).")
             throw error
         }
     }

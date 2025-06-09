@@ -470,7 +470,7 @@ struct WebRepositoryTestGroup {
         
         // MARK: - Tests
         
-        @Test("uploadScan succeeds") func uploadScanSuccess() async throws {
+        @Test("upload succeeds") func uploadScanSuccess() async throws {
             let images = (0..<3).map { _ in Data("img".utf8) }
             let presigned = (0..<3).map { URL(string: "https://presigned-\($0).example.com")! }
             let presignedData = try JSONEncoder().encode(PresignedURLsResponse(presigned: presigned))
@@ -514,7 +514,7 @@ struct WebRepositoryTestGroup {
             #expect(requests.all.count == 1 /*urls*/ + images.count /*PUTs*/ + 1 /*complete*/)
         }
         
-        @Test("uploadScan throws on count mismatch") func uploadScanCountMismatch() async throws {
+        @Test("upload throws on count mismatch") func uploadScanCountMismatch() async throws {
             let images = [Data("a".utf8), Data("b".utf8), Data("c".utf8)]
             let presigned = [URL(string: "https://one.example.com")!,
                              URL(string: "https://two.example.com")!]
@@ -536,7 +536,7 @@ struct WebRepositoryTestGroup {
             }
         }
         
-        @Test("uploadScan throws when pushEndpointArn missing")
+        @Test("upload throws when pushEndpointArn missing")
         func uploadScanMissingEndpointArn() async throws {
             let presigned = [ URL(string: "https://only.example.com")! ]
             let data = try JSONEncoder().encode(PresignedURLsResponse(presigned: presigned))
@@ -579,7 +579,7 @@ struct WebRepositoryTestGroup {
             #expect(result == expected)
         }
         
-        @Test("downloadUSDZ writes file to Documents directory") func downloadUSDZ() async throws {
+        @Test("downloadModel writes file to Documents directory") func downloadUSDZ() async throws {
             let usdzData = Data("dummy-usdz".utf8)
             let remoteURL = URL(string: "https://cdn.example.com/model.usdz")!
             let scanID = UUID().uuidString
@@ -589,7 +589,7 @@ struct WebRepositoryTestGroup {
                 return (http200(req, mime: "model/vnd.usdz+zip"), usdzData)
             }
             
-            try await repo.downloadUSDZ(from: remoteURL, scanID: scanID)
+            try await repo.downloadModel(from: remoteURL, scanID: scanID)
             
             let docsDir = fileManager.urls(for: .documentDirectory, in: .userDomainMask)[0]
             let destURL = docsDir
