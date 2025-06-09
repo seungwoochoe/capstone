@@ -11,7 +11,7 @@ import SwiftData
 struct UploadTask: Identifiable, Equatable {
     let id: UUID
     var name: String
-    let imageURLs: [URL]
+    let fileURL: URL
     let createdAt: Date
     var retryCount: Int
     var uploadStatus: UploadTaskStatus
@@ -47,20 +47,20 @@ extension Persistence {
 
         @Attribute(.unique) var id: UUID
         var name: String
-        var imageURLs: [URL]
+        var fileURL: URL
         var createdAt: Date
         var retryCount: Int
         var uploadStatus: UploadTaskStatus
         
         init(id: UUID,
              name: String,
-             imageURLs: [URL],
+             fileURL: URL,
              createdAt: Date = Date(),
              retryCount: Int = 0,
              uploadStatus: UploadTaskStatus = .pendingUpload) {
             self.id = id
             self.name = name
-            self.imageURLs = imageURLs
+            self.fileURL = fileURL
             self.createdAt = createdAt
             self.retryCount = retryCount
             self.uploadStatus = uploadStatus
@@ -74,7 +74,7 @@ extension Persistence.UploadTask {
         self.init(
             id: uploadTask.id,
             name: uploadTask.name,
-            imageURLs: uploadTask.imageURLs,
+            fileURL: uploadTask.fileURL,
             createdAt: uploadTask.createdAt,
             retryCount: uploadTask.retryCount,
             uploadStatus: uploadTask.uploadStatus
@@ -85,7 +85,7 @@ extension Persistence.UploadTask {
         return UploadTask(
             id: id,
             name: name,
-            imageURLs: imageURLs,
+            fileURL: fileURL,
             createdAt: createdAt,
             retryCount: retryCount,
             uploadStatus: uploadStatus

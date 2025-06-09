@@ -29,7 +29,7 @@ struct SignInView: View {
     @State private var authSession: ASWebAuthenticationSession?
     @State private var contextProvider = WebAuthContextProvider()
     
-    private let logger = Logger(subsystem: Bundle.main.bundleIdentifier!, category: #file)
+    private let logger = Logger.forType(SignInView.self)
     
     var body: some View {
         ZStack {

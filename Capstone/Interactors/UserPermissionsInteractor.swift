@@ -7,6 +7,7 @@
 
 import SwiftUI
 import AVFoundation
+import OSLog
 
 // MARK: - Permission Types
 
@@ -55,6 +56,8 @@ final class RealUserPermissionsInteractor: UserPermissionsInteractor {
     private let openAppSettings: () -> Void
     private let notificationCenter: SystemNotificationsCenter
     
+    private let logger = Logger.forType(RealUserPermissionsInteractor.self)
+    
     init(appState: Store<AppState>,
          notificationCenter: SystemNotificationsCenter = UNUserNotificationCenter.current(),
          openAppSettings: @escaping () -> Void) {
@@ -67,36 +70,44 @@ final class RealUserPermissionsInteractor: UserPermissionsInteractor {
         let keyPath = AppState.permissionKeyPath(for: permission)
         let currentStatus = appState[keyPath]
         guard currentStatus == .unknown else { return }
-        let appState = appState
+        
+        logger.debug("Resolving permission status for \(String(describing: permission)).")
         
         switch permission {
         case .pushNotifications:
             Task { @MainActor in
-                appState[keyPath] = await pushNotificationsPermissionStatus()
+                let status = await pushNotificationsPermissionStatus()
+                appState[keyPath] = status
+                logger.debug("Push notifications permission resolved to: \(String(describing: status)).")
             }
         case .camera:
-            appState[keyPath] = cameraPermissionStatus()
+            let status = cameraPermissionStatus()
+            appState[keyPath] = status
+            logger.debug("Camera permission resolved to: \(String(describing: status)).")
         }
     }
     
     func request(permission: Permission) async throws {
         switch permission {
         case .pushNotifications:
+            logger.debug("Requesting push notifications permission.")
             let granted = try await notificationCenter.requestAuthorization(options: [.alert, .sound, .badge])
             await MainActor.run {
                 self.appState[\.permissions.push] = granted ? .granted : .denied
+                logger.info("Push notifications permission \(granted ? "granted" : "denied").")
             }
         case .camera:
+            logger.debug("Requesting camera access.")
             let granted = await AVCaptureDevice.requestAccess(for: .video)
             await MainActor.run {
                 appState[\.permissions.camera] = granted ? .granted : .denied
+                logger.info("Camera permission \(granted ? "granted" : "denied").")
             }
         }
     }
 }
 
 extension UNAuthorizationStatus {
-    /// Maps UNAuthorizationStatus to our simpler PermissionStatus enum.
     func mapToPermissionStatus() -> Permission.Status {
         switch self {
         case .authorized:

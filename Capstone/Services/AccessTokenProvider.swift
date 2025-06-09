@@ -26,7 +26,7 @@ final class RealAccessTokenProvider: AccessTokenProvider {
     private let keychain: KeychainService
     private var defaults: DefaultsService
     private let authWebRepository: AuthWebRepository
-    private let logger = Logger(subsystem: Bundle.main.bundleIdentifier!, category: #file)
+    private let logger = Logger.forType(RealAccessTokenProvider.self)
 
     init(keychainService: KeychainService, defaultsService: DefaultsService, authWebRepository: AuthWebRepository) {
         self.keychain = keychainService

@@ -12,6 +12,8 @@ import Testing
 @Suite("WebRepositoryTestGroup", .serialized)
 struct WebRepositoryTestGroup {
     
+    // MARK: - WebRepositoryTests
+    
     @Suite("WebRepositoryTests", .serialized)
     struct WebRepositoryTests {
         
@@ -308,6 +310,7 @@ struct WebRepositoryTestGroup {
         }
     }
     
+    // MARK: - PushTokenWebRepositoryTests
     
     @Suite("PushTokenWebRepositoryTests", .serialized)
     struct PushTokenWebRepositoryTests {
@@ -427,9 +430,10 @@ struct WebRepositoryTestGroup {
         }
     }
     
+    // MARK: - ScanWebRepositoryTests
+    
     @Suite("ScanWebRepositoryTests", .serialized)
     struct ScanWebRepositoryTests {
-        
         private let fileManager = FileManager.default
         
         private func http200(_ req: URLRequest,
@@ -459,48 +463,40 @@ struct WebRepositoryTestGroup {
             )
         }
         
-        // Thread-safe store that gathers every received `URLRequest`.
-        private final class RequestStore {
-            private let q = DispatchQueue(label: "req-store")
-            private var _all: [URLRequest] = []
-            
-            func append(_ req: URLRequest) { q.sync { _all.append(req) } }
-            var all: [URLRequest] { q.sync { _all } }
-        }
+        // Tests
         
-        // MARK: - Tests
-        
-        @Test("uploadScan succeeds") func uploadScanSuccess() async throws {
-            let images = (0..<3).map { _ in Data("img".utf8) }
-            let presigned = (0..<3).map { URL(string: "https://presigned-\($0).example.com")! }
-            let presignedData = try JSONEncoder().encode(PresignedURLsResponse(presigned: presigned))
+        @Test("upload succeeds")
+        func uploadSuccess() async throws {
+            let fileData = Data("file-content".utf8)
+            let presignedURL = URL(string: "https://presigned.example.com/upload")!
+            let presignedResponse = PresignedURLsResponse(presigned: [presignedURL])
+            let presignedData = try JSONEncoder().encode(presignedResponse)
             let okData = #"{"ok":true}"#.data(using: .utf8)!
             
-            let requests = RequestStore()
+            var requests: [URLRequest] = []
             let defaults = StubDefaultsService()
             defaults[.pushEndpointArn] = "arn:aws:sns:…/endpoint"
             
             let repo = makeRepository(defaults: defaults) { req in
                 requests.append(req)
-                
                 switch (req.httpMethod, req.url!.path) {
-                    
                 case ("POST", "/upload-urls"):
-                    // Authorization must be present.
+                    // Authorization header
                     #expect(req.value(forHTTPHeaderField: "Authorization") == "Bearer token-123")
-                    // Body must contain the correct task & count
+                    // JSON body keys: scanID and fileCount
                     if let body = req.httpBody,
                        let json = try? JSONSerialization.jsonObject(with: body) as? [String: Any] {
-                        #expect(json["scanID"] as? String == "task-1")
-                        #expect(json["imageCount"] as? Int == images.count)
+                        #expect(json["scanID"] as? String == "scan-1")
+                        #expect(json["fileCount"] as? Int == 1)
                     }
                     return (http200(req), presignedData)
                     
-                case ("PUT", _):          // the presigned uploads
-                    #expect(req.value(forHTTPHeaderField: "Content-Type") == "image/jpeg")
+                case ("PUT", _):
+                    // Content-Type is application/octet-stream
+                    #expect(req.value(forHTTPHeaderField: "Content-Type") == "application/octet-stream")
                     return (http200(req, mime: "text/plain"), Data())
                     
-                case ("POST", let p) where p.hasSuffix("/complete"):
+                case ("POST", let path) where path.hasSuffix("/complete"):
                     #expect(req.value(forHTTPHeaderField: "Authorization") == "Bearer token-123")
                     return (http200(req), okData)
                     
@@ -509,63 +505,65 @@ struct WebRepositoryTestGroup {
                 }
             }
             
-            let ok = try await repo.uploadScan(id: "task-1", images: images)
+            let ok = try await repo.upload(id: "scan-1", file: fileData)
             #expect(ok)
-            #expect(requests.all.count == 1 /*urls*/ + images.count /*PUTs*/ + 1 /*complete*/)
+            #expect(requests.count == 3)
         }
         
-        @Test("uploadScan throws on count mismatch") func uploadScanCountMismatch() async throws {
-            let images = [Data("a".utf8), Data("b".utf8), Data("c".utf8)]
-            let presigned = [URL(string: "https://one.example.com")!,
-                             URL(string: "https://two.example.com")!]
-            let data = try JSONEncoder().encode(PresignedURLsResponse(presigned: presigned))
+        @Test("upload throws when no presigned URL returned")
+        func uploadNoPresignedURL() async throws {
+            let fileData = Data("empty".utf8)
+            let emptyResponse = PresignedURLsResponse(presigned: [])
+            let data = try JSONEncoder().encode(emptyResponse)
             
             let defaults = StubDefaultsService()
             defaults[.pushEndpointArn] = "arn:aws:sns:…/endpoint"
             
             let repo = makeRepository(defaults: defaults) { req in
-                guard req.url!.path == "/upload-urls" else { throw MockError.valueNotSet }
+                guard req.url!.path == "/upload-urls" else {
+                    throw MockError.valueNotSet
+                }
                 return (http200(req), data)
             }
             
             do {
-                _ = try await repo.uploadScan(id: "mismatch", images: images)
-                #expect(Bool(false), "Expected to throw")
+                _ = try await repo.upload(id: "scan-x", file: fileData)
+                #expect(Bool(false), "Expected to throw when no presigned URL")
             } catch let err as APIError {
                 #expect(err == .unexpectedResponse)
             }
         }
         
-        @Test("uploadScan throws when pushEndpointArn missing")
-        func uploadScanMissingEndpointArn() async throws {
-            let presigned = [ URL(string: "https://only.example.com")! ]
-            let data = try JSONEncoder().encode(PresignedURLsResponse(presigned: presigned))
+        @Test("upload throws when pushEndpointArn missing")
+        func uploadMissingEndpointArn() async throws {
+            let fileData = Data("data".utf8)
+            let presignedURL = URL(string: "https://presigned.example.com/upload")!
+            let presignedResponse = PresignedURLsResponse(presigned: [presignedURL])
+            let data = try JSONEncoder().encode(presignedResponse)
             
             let repo = makeRepository { req in
                 switch (req.httpMethod, req.url!.path) {
                 case ("POST", "/upload-urls"):
                     return (http200(req), data)
-                    
                 case ("PUT", _):
-                    // pretend the image upload succeeded
-                    return (http200(req, mime: "image/jpeg"), Data())
-                    
+                    return (http200(req, mime: "application/octet-stream"), Data())
                 default:
                     throw MockError.valueNotSet
                 }
             }
             
             do {
-                _ = try await repo.uploadScan(id: "no-arn", images: [ Data("x".utf8) ])
-                #expect(Bool(false), "Expected to throw")
+                _ = try await repo.upload(id: "scan-no-arn", file: fileData)
+                #expect(Bool(false), "Expected to throw when endpoint ARN missing")
             } catch let err as APIError {
                 #expect(err == .unexpectedResponse)
             }
         }
         
-        @Test("fetchTask decodes correctly") func fetchTask() async throws {
+        @Test("fetchTask decodes correctly")
+        func fetchTask() async throws {
             let expected = TaskStatusResponse(status: "pending-upload",
-                                              usdzURL: nil,
+                                              modelURL: nil,
                                               createdAt: nil)
             let data = try JSONEncoder().encode(expected)
             
@@ -579,17 +577,18 @@ struct WebRepositoryTestGroup {
             #expect(result == expected)
         }
         
-        @Test("downloadUSDZ writes file to Documents directory") func downloadUSDZ() async throws {
-            let usdzData = Data("dummy-usdz".utf8)
-            let remoteURL = URL(string: "https://cdn.example.com/model.usdz")!
+        @Test("downloadModel writes file to Documents directory")
+        func downloadModelWritesFile() async throws {
+            let modelData = Data("dummy-model".utf8)
+            let remoteURL = URL(string: "https://presigned.example.com/model.usdz")!
             let scanID = UUID().uuidString
             
             let repo = makeRepository { req in
                 #expect(req.url == remoteURL)
-                return (http200(req, mime: "model/vnd.usdz+zip"), usdzData)
+                return (http200(req, mime: "model/vnd.usdz+zip"), modelData)
             }
             
-            try await repo.downloadUSDZ(from: remoteURL, scanID: scanID)
+            try await repo.downloadModel(from: remoteURL, scanID: scanID)
             
             let docsDir = fileManager.urls(for: .documentDirectory, in: .userDomainMask)[0]
             let destURL = docsDir
@@ -597,7 +596,7 @@ struct WebRepositoryTestGroup {
                 .appendingPathComponent(remoteURL.lastPathComponent)
             
             #expect(fileManager.fileExists(atPath: destURL.path))
-            #expect(try Data(contentsOf: destURL) == usdzData)
+            #expect(try Data(contentsOf: destURL) == modelData)
             #expect(destURL.lastPathComponent == "model.usdz")
         }
     }

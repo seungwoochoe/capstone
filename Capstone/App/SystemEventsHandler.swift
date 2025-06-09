@@ -24,7 +24,7 @@ struct RealSystemEventsHandler: SystemEventsHandler {
     private let pushNotificationsHandler: PushNotificationsHandler
     private let pushTokenWebRepository: PushTokenWebRepository
     private let cancelBag = CancelBag()
-    private let logger = Logger(subsystem: Bundle.main.bundleIdentifier!, category: #file)
+    private let logger = Logger.forType(RealSystemEventsHandler.self)
     
     init(container: DIContainer,
          deepLinksHandler: DeepLinksHandler,
@@ -46,41 +46,43 @@ struct RealSystemEventsHandler: SystemEventsHandler {
             .sink { status in
                 if status == .granted {
                     UIApplication.shared.registerForRemoteNotifications()
-                    logger.info("Registered for remote notifications")
+                    logger.info("Called UIApplication.shared.registerForRemoteNotifications (installPushNotificationsSubscriberOnLaunch).")
                 }
             }
             .store(in: cancelBag)
     }
     
     func sceneOpenURLContexts(_ urlContexts: Set<UIOpenURLContext>) {
-        logger.debug("sceneOpenURLContexts received contexts: \(urlContexts) ")
+        logger.debug("sceneOpenURLContexts received contexts: \(urlContexts).")
         guard let url = urlContexts.first?.url else {
-            logger.warning("No URL found in openURLContexts")
+            logger.warning("No URL found in openURLContexts.")
             return
         }
         handle(url: url)
     }
     
     private func handle(url: URL) {
-        logger.debug("Processing URL: \(url.absoluteString, privacy: .public)")
-        if url.host == "auth" && url.path == "/callback",
+        logger.debug("Processing URL: \(url.absoluteString, privacy: .public).")
+        
+        if url.host == "auth", url.path == "/callback",
            let code = url.queryItem(named: "code") {
-            logger.info("Auth callback received with code: \(code, privacy: .private)")
+            logger.info("Auth callback received with code: \(code, privacy: .private).")
             Task {
                 do {
                     try await container.interactors.authInteractor.completeSignIn(authorizationCode: code)
-                    logger.info("Sign-in completed successfully")
+                    logger.info("Sign-in completed successfully.")
                 } catch {
-                    logger.error("Sign-in completion failed: \(error.localizedDescription, privacy: .public)")
+                    logger.error("Sign-in completion failed: \(error.localizedDescription, privacy: .public).")
                 }
             }
             return
         }
         
         guard let deepLink = DeepLink(url: url) else {
-            logger.warning("Unrecognized deep link URL: \(url.absoluteString, privacy: .public)")
+            logger.warning("Unrecognized deep link URL: \(url.absoluteString, privacy: .public).")
             return
         }
+        
         deepLinksHandler.open(deepLink: deepLink)
     }
     
@@ -91,11 +93,10 @@ struct RealSystemEventsHandler: SystemEventsHandler {
         
         if container.appState[\.permissions.push] == .granted {
             UIApplication.shared.registerForRemoteNotifications()
-            logger.debug("Re-registered for remote notifications")
+            logger.debug("Called UIApplication.shared.registerForRemoteNotifications (sceneDidBecomeActive).")
         }
         
         Task {
-            logger.debug("Triggering upload of pending scan tasks")
             await container.interactors.scanInteractor.uploadPendingTasks()
         }
     }
@@ -108,29 +109,29 @@ struct RealSystemEventsHandler: SystemEventsHandler {
         switch result {
         case .success(let deviceToken):
             let tokenHex = deviceToken.map { String(format: "%02x", $0) }.joined()
-            logger.info("Received device token: \(tokenHex, privacy: .private)")
+            logger.info("Received device token: \(tokenHex, privacy: .private).")
             Task {
                 do {
                     let endpointArn = try await pushTokenWebRepository.registerPushToken(deviceToken)
                     Defaults[.pushEndpointArn] = endpointArn
-                    logger.info("Successfully registered push token. EndpointArn: \(endpointArn, privacy: .public)")
+                    logger.info("Successfully registered push token. EndpointArn: \(endpointArn, privacy: .public).")
                 } catch {
-                    logger.error("Failed to register push token: \(error.localizedDescription, privacy: .public)")
+                    logger.error("Failed to register push token: \(error.localizedDescription, privacy: .public).")
                 }
             }
         case .failure(let error):
-            logger.error("Failed to register for remote notifications: \(error.localizedDescription, privacy: .public)")
+            logger.error("Failed to register for remote notifications: \(error.localizedDescription, privacy: .public).")
         }
     }
     
     func appDidReceiveRemoteNotification(payload: [AnyHashable: Any]) async -> UIBackgroundFetchResult {
-        logger.debug("App did receive remote notification payload: \(payload) ")
+        logger.debug("App did receive remote notification payload: \(payload).")
         if let scanID = payload["scanID"] as? String {
-            logger.info("Remote notification contains scanID: \(scanID, privacy: .public)")
+            logger.info("Remote notification contains scanID: \(scanID, privacy: .public).")
             await container.interactors.scanInteractor.handlePush(scanID: scanID)
             return .newData
         }
-        logger.debug("Remote notification payload did not contain a scanID")
+        logger.debug("Remote notification payload did not contain a scanID.")
         return .noData
     }
 }
