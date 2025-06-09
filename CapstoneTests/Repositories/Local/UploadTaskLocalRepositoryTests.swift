@@ -29,7 +29,7 @@ struct RealUploadTaskLocalRepositoryTests {
         let fetched = try #require(tasks.first)
         #expect(fetched.id == sample.id)
         #expect(fetched.name == sample.name)
-        #expect(fetched.imageURLs == sample.imageURLs)
+        #expect(fetched.fileURL == sample.fileURL)
         #expect(fetched.retryCount == sample.retryCount)
         #expect(fetched.uploadStatus == sample.uploadStatus)
     }
@@ -66,7 +66,7 @@ struct RealUploadTaskLocalRepositoryTests {
         let nonExistent = UploadTask(
             id: UUID(),
             name: "Nonexistent",
-            imageURLs: [],
+            fileURL: URL(string: "https://example.com/does-not-exist")!,
             createdAt: Date(),
             retryCount: 0,
             uploadStatus: .failedUpload
@@ -86,7 +86,7 @@ struct RealUploadTaskLocalRepositoryTests {
         let nonExistent = UploadTask(
             id: UUID(),
             name: "Nonexistent",
-            imageURLs: [],
+            fileURL: URL(string: "https://example.com/does-not-exist")!,
             createdAt: Date(),
             retryCount: 0,
             uploadStatus: .failedUpload
