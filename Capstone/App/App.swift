@@ -23,7 +23,7 @@ extension AppEnvironment {
     var rootView: some View {
         VStack {
             if isRunningTests {
-                Text("Running unit tests")
+                Text("Running unit tests…")
             } else {
                 Group {
                     RootView()
@@ -31,7 +31,7 @@ extension AppEnvironment {
                         .modelContainer(modelContainer)
                         .inject(diContainer)
                     if modelContainer.isStub {
-                        Text("⚠️ There is an issue with local database")
+                        Text("There is an issue with local database.")
                     }
                 }
             }

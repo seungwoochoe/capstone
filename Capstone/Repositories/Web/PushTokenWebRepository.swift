@@ -7,28 +7,28 @@
 
 import Foundation
 
-// MARK: - DTOs for Push Token Registration -------------------------------
-
-struct RegisterPushTokenResponse: Decodable {
+struct RegisterPushTokenResponse: Codable {
     let endpointArn: String
 }
 
+// MARK: - PushTokenWebRepository
+
 protocol PushTokenWebRepository: WebRepository {
-    /// Sends the raw APNs device token to the backend, which in turn
-    /// calls SNS.createPlatformEndpoint(...) and returns an endpointArn.
-    /// – Parameter token: the `deviceToken` Data from didRegisterForRemoteNotifications
-    /// – Returns: the SNS platform endpoint ARN (i.e. “arn:aws:sns:…”)
     func registerPushToken(_ token: Data) async throws -> String
 }
+
+// MARK: - RealPushTokenWebRepository
 
 struct RealPushTokenWebRepository: PushTokenWebRepository {
     
     let session: URLSession
     let baseURL: String
+    let tokenProvider: AccessTokenProvider
 
-    init(session: URLSession = .shared, baseURL: String) {
+    init(session: URLSession = .shared, baseURL: String, accessTokenProvider: AccessTokenProvider) {
         self.session = session
         self.baseURL = baseURL
+        self.tokenProvider = accessTokenProvider
     }
 
     func registerPushToken(_ token: Data) async throws -> String {
@@ -37,7 +37,6 @@ struct RealPushTokenWebRepository: PushTokenWebRepository {
         let payload = ["token": hexToken]
         let bodyData = try JSONEncoder().encode(payload)
         
-        // Call the new /devices/push-token endpoint
         let response: RegisterPushTokenResponse = try await call(
             endpoint: API.Register(bodyData: bodyData)
         )
@@ -56,7 +55,4 @@ private extension RealPushTokenWebRepository {
             func body() throws -> Data? { bodyData }
         }
     }
-
-    /// Dummy type for 204 No Content (not used now)
-    private struct EmptyResponse: Decodable {}
 }

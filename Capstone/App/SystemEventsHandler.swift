@@ -5,11 +5,10 @@
 //  Created by Seungwoo Choe on 2025-04-09.
 //
 
-import UIKit
+import SwiftUI
 import Combine
 import OSLog
 
-@MainActor
 protocol SystemEventsHandler {
     func sceneOpenURLContexts(_ urlContexts: Set<UIOpenURLContext>)
     func sceneDidBecomeActive()
@@ -20,12 +19,12 @@ protocol SystemEventsHandler {
 
 struct RealSystemEventsHandler: SystemEventsHandler {
     
-    let container: DIContainer
-    let deepLinksHandler: DeepLinksHandler
-    let pushNotificationsHandler: PushNotificationsHandler
-    let pushTokenWebRepository: PushTokenWebRepository
-    private let logger = Logger(subsystem: Bundle.main.bundleIdentifier!, category: #file)
+    private let container: DIContainer
+    private let deepLinksHandler: DeepLinksHandler
+    private let pushNotificationsHandler: PushNotificationsHandler
+    private let pushTokenWebRepository: PushTokenWebRepository
     private let cancelBag = CancelBag()
+    private let logger = Logger(subsystem: Bundle.main.bundleIdentifier!, category: #file)
     
     init(container: DIContainer,
          deepLinksHandler: DeepLinksHandler,
@@ -37,49 +36,51 @@ struct RealSystemEventsHandler: SystemEventsHandler {
         self.pushNotificationsHandler = pushNotificationsHandler
         self.pushTokenWebRepository = pushTokenWebRepository
         
-        installKeyboardHeightObserver()
         installPushNotificationsSubscriberOnLaunch()
     }
     
-    private func installKeyboardHeightObserver() {
-        let appState = container.appState
-        NotificationCenter.default.keyboardHeightPublisher
-            .sink { [appState] height in
-                appState[\.system.keyboardHeight] = height
-            }
-            .store(in: cancelBag)
-    }
-    
     private func installPushNotificationsSubscriberOnLaunch() {
-        weak var permissions = container.interactors.userPermissions
         container.appState
             .updates(for: AppState.permissionKeyPath(for: .pushNotifications))
             .first(where: { $0 != .unknown })
             .sink { status in
                 if status == .granted {
-                    // If the permission was granted on a previous launch,
-                    // request the push token again:
-                    permissions?.request(permission: .pushNotifications)
+                    UIApplication.shared.registerForRemoteNotifications()
+                    logger.info("Registered for remote notifications")
                 }
             }
             .store(in: cancelBag)
     }
     
     func sceneOpenURLContexts(_ urlContexts: Set<UIOpenURLContext>) {
-        guard let url = urlContexts.first?.url else { return }
+        logger.debug("sceneOpenURLContexts received contexts: \(urlContexts) ")
+        guard let url = urlContexts.first?.url else {
+            logger.warning("No URL found in openURLContexts")
+            return
+        }
         handle(url: url)
     }
     
     private func handle(url: URL) {
+        logger.debug("Processing URL: \(url.absoluteString, privacy: .public)")
         if url.host == "auth" && url.path == "/callback",
            let code = url.queryItem(named: "code") {
+            logger.info("Auth callback received with code: \(code, privacy: .private)")
             Task {
-                try? await container.interactors.authInteractor.completeSignIn(authorizationCode: code)
+                do {
+                    try await container.interactors.authInteractor.completeSignIn(authorizationCode: code)
+                    logger.info("Sign-in completed successfully")
+                } catch {
+                    logger.error("Sign-in completion failed: \(error.localizedDescription, privacy: .public)")
+                }
             }
-            return  // Done ­– stop further routing
+            return
         }
         
-        guard let deepLink = DeepLink(url: url) else { return }
+        guard let deepLink = DeepLink(url: url) else {
+            logger.warning("Unrecognized deep link URL: \(url.absoluteString, privacy: .public)")
+            return
+        }
         deepLinksHandler.open(deepLink: deepLink)
     }
     
@@ -88,11 +89,14 @@ struct RealSystemEventsHandler: SystemEventsHandler {
         container.interactors.userPermissions.resolveStatus(for: .pushNotifications)
         container.interactors.userPermissions.resolveStatus(for: .camera)
         
-        if container.appState[\.permissions].camera != .granted {
-            container.interactors.userPermissions.request(permission: .camera)
-        }
-        if container.appState[\.permissions].push == .granted {
+        if container.appState[\.permissions.push] == .granted {
             UIApplication.shared.registerForRemoteNotifications()
+            logger.debug("Re-registered for remote notifications")
+        }
+        
+        Task {
+            logger.debug("Triggering upload of pending scan tasks")
+            await container.interactors.scanInteractor.uploadPendingTasks()
         }
     }
     
@@ -101,53 +105,32 @@ struct RealSystemEventsHandler: SystemEventsHandler {
     }
     
     func handlePushRegistration(result: Result<Data, Error>) {
-        logger.log("Handling push registration")
         switch result {
         case .success(let deviceToken):
-            // Send deviceToken to your backend to get an endpointArn
+            let tokenHex = deviceToken.map { String(format: "%02x", $0) }.joined()
+            logger.info("Received device token: \(tokenHex, privacy: .private)")
             Task {
                 do {
-                    let endpointArn =
-                    try await pushTokenWebRepository.registerPushToken(deviceToken)
-                    // Persist the endpointArn locally (UserDefaults, Keychain, etc.).
-                    UserDefaults.standard.set(endpointArn, forKey: "pushEndpointArn")
+                    let endpointArn = try await pushTokenWebRepository.registerPushToken(deviceToken)
+                    Defaults[.pushEndpointArn] = endpointArn
+                    logger.info("Successfully registered push token. EndpointArn: \(endpointArn, privacy: .public)")
                 } catch {
-                    // Log or handle error
-                    logger.error("Failed to register push token: \(error)")
+                    logger.error("Failed to register push token: \(error.localizedDescription, privacy: .public)")
                 }
             }
         case .failure(let error):
-            // The system failed to register for remote notifications
-            logger.error("Did fail to register for remote notifications: \(error)")
+            logger.error("Failed to register for remote notifications: \(error.localizedDescription, privacy: .public)")
         }
     }
     
     func appDidReceiveRemoteNotification(payload: [AnyHashable: Any]) async -> UIBackgroundFetchResult {
-        logger.log("App did receive remote notifictaion: \(payload)")
-        if let taskId = payload["taskId"] as? String {
-            await container.interactors.scanInteractor.handlePush(scanID: taskId)
+        logger.debug("App did receive remote notification payload: \(payload) ")
+        if let scanID = payload["scanID"] as? String {
+            logger.info("Remote notification contains scanID: \(scanID, privacy: .public)")
+            await container.interactors.scanInteractor.handlePush(scanID: scanID)
             return .newData
         }
+        logger.debug("Remote notification payload did not contain a scanID")
         return .noData
-    }
-}
-
-// MARK: - Notifications
-
-private extension NotificationCenter {
-    var keyboardHeightPublisher: AnyPublisher<CGFloat, Never> {
-        let willShow = publisher(for: UIApplication.keyboardWillShowNotification)
-            .map { $0.keyboardHeight }
-        let willHide = publisher(for: UIApplication.keyboardWillHideNotification)
-            .map { _ in CGFloat(0) }
-        return Publishers.Merge(willShow, willHide)
-            .eraseToAnyPublisher()
-    }
-}
-
-private extension Notification {
-    var keyboardHeight: CGFloat {
-        return (userInfo?[UIResponder.keyboardFrameEndUserInfoKey] as? NSValue)?
-            .cgRectValue.height ?? 0
     }
 }

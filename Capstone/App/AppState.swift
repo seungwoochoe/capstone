@@ -5,24 +5,34 @@
 //  Created by Seungwoo Choe on 2025-04-11.
 //
 
-import SwiftUI
-import Combine
+import Foundation
 
-struct AppState: Equatable {
+struct AppState {
     var auth: Auth
     var routing = ViewRouting()
     var system = System()
     var permissions = Permissions()
     
-    init(isSignedIn: Bool = false) {
+    var sortField: SortField
+    var sortOrder: SortOrder
+    var scans: [Scan] = []
+    var uploadTasks: [UploadTask] = []
+    
+    init(
+        isSignedIn: Bool = false,
+        sortField: SortField = .createdAt,
+        sortOrder: SortOrder = .descending
+    ) {
         self.auth = Auth(isSignedIn: isSignedIn)
+        self.sortField = sortField
+        self.sortOrder = sortOrder
     }
 }
 
 // MARK: - Auth
 
 extension AppState {
-    struct Auth: Equatable {
+    struct Auth {
         var isSignedIn: Bool
     }
 }
@@ -38,16 +48,15 @@ extension AppState {
 // MARK: - System State
 
 extension AppState {
-    struct System: Equatable {
+    struct System {
         var isActive: Bool = false
-        var keyboardHeight: CGFloat = 0
     }
 }
 
 // MARK: - Permissions
 
 extension AppState {
-    struct Permissions: Equatable {
+    struct Permissions {
         var camera: Permission.Status = .unknown
         var push: Permission.Status = .unknown
     }

@@ -1,0 +1,28 @@
+{
+  "configurations" : [
+    {
+      "id" : "899A11F5-E1F5-4276-8626-21E448A84F73",
+      "name" : "Test Scheme Action",
+      "options" : {
+
+      }
+    }
+  ],
+  "defaultOptions" : {
+    "targetForVariableExpansion" : {
+      "containerPath" : "container:Capstone.xcodeproj",
+      "identifier" : "23CF126C2D99531900B88F84",
+      "name" : "Capstone"
+    }
+  },
+  "testTargets" : [
+    {
+      "target" : {
+        "containerPath" : "container:Capstone.xcodeproj",
+        "identifier" : "231BD9CB2DC9DF2E00E2C613",
+        "name" : "CapstoneTests"
+      }
+    }
+  ],
+  "version" : 1
+}

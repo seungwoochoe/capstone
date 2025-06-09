@@ -14,7 +14,7 @@ struct USDZThumbnailView: View {
     let size: CGSize
     @State private var thumbnail: UIImage?
     
-    private let logger = Logger(subsystem: Bundle.main.bundleIdentifier!, category: "USDZThumbnailView")
+    private let logger = Logger(subsystem: Bundle.main.bundleIdentifier!, category: #file)
     
     var body: some View {
         ZStack {
@@ -114,5 +114,8 @@ struct USDZThumbnailView: View {
 }
 
 #Preview {
-    USDZThumbnailView(url: Scan.sample.usdzURL, size: CGSize(width: 50, height: 50))
+    USDZThumbnailView(
+        url: Bundle.main.url(forResource: "sample", withExtension: "usdz")!,
+        size: CGSize(width: 50, height: 50)
+    )
 }

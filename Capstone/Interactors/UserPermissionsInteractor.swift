@@ -5,8 +5,6 @@
 //  Created by Seungwoo Choe on 2025-04-11.
 //
 
-import Foundation
-import UserNotifications
 import SwiftUI
 import AVFoundation
 
@@ -42,20 +40,21 @@ protocol SystemNotificationsSettings {
     var authorizationStatus: UNAuthorizationStatus { get }
 }
 
-// MARK: - UserPermissionsInteractor Protocol
+// MARK: - UserPermissionsInteractor
 
 protocol UserPermissionsInteractor: AnyObject {
     func resolveStatus(for permission: Permission)
-    func request(permission: Permission)
+    func request(permission: Permission) async throws
 }
 
-// MARK: - RealUserPermissionsInteractor Implementation
+// MARK: - RealUserPermissionsInteractor
 
 final class RealUserPermissionsInteractor: UserPermissionsInteractor {
+    
     private let appState: Store<AppState>
     private let openAppSettings: () -> Void
     private let notificationCenter: SystemNotificationsCenter
-
+    
     init(appState: Store<AppState>,
          notificationCenter: SystemNotificationsCenter = UNUserNotificationCenter.current(),
          openAppSettings: @escaping () -> Void) {
@@ -63,7 +62,7 @@ final class RealUserPermissionsInteractor: UserPermissionsInteractor {
         self.notificationCenter = notificationCenter
         self.openAppSettings = openAppSettings
     }
-
+    
     func resolveStatus(for permission: Permission) {
         let keyPath = AppState.permissionKeyPath(for: permission)
         let currentStatus = appState[keyPath]
@@ -79,28 +78,18 @@ final class RealUserPermissionsInteractor: UserPermissionsInteractor {
             appState[keyPath] = cameraPermissionStatus()
         }
     }
-
-    func request(permission: Permission) {
+    
+    func request(permission: Permission) async throws {
         switch permission {
         case .pushNotifications:
-            Task {
-                do {
-                    let granted = try await notificationCenter.requestAuthorization(options: [.alert, .sound, .badge])
-                    await MainActor.run {
-                        self.appState[\.permissions.push] = granted ? .granted : .denied
-                    }
-                } catch {
-                    await MainActor.run {
-                        self.appState[\.permissions.push] = .denied
-                    }
-                }
+            let granted = try await notificationCenter.requestAuthorization(options: [.alert, .sound, .badge])
+            await MainActor.run {
+                self.appState[\.permissions.push] = granted ? .granted : .denied
             }
         case .camera:
-            Task {
-                let granted = await AVCaptureDevice.requestAccess(for: .video)
-                await MainActor.run {
-                    appState[\.permissions.camera] = granted ? .granted : .denied
-                }
+            let granted = await AVCaptureDevice.requestAccess(for: .video)
+            await MainActor.run {
+                appState[\.permissions.camera] = granted ? .granted : .denied
             }
         }
     }
@@ -126,11 +115,8 @@ extension UNAuthorizationStatus {
 
 private extension RealUserPermissionsInteractor {
     
-    // Camera
     func cameraPermissionStatus() -> Permission.Status {
-        let status = AVCaptureDevice.authorizationStatus(for: .video)
-        
-        switch status {
+        switch AVCaptureDevice.authorizationStatus(for: .video) {
         case .notDetermined:
             return .unknown
         case .authorized:
@@ -139,8 +125,7 @@ private extension RealUserPermissionsInteractor {
             return .denied
         }
     }
-
-    // Push notifications
+    
     func pushNotificationsPermissionStatus() async -> Permission.Status {
         return await notificationCenter
             .currentSettings()
@@ -149,7 +134,7 @@ private extension RealUserPermissionsInteractor {
     }
 }
 
-// MARK: - StubUserPermissionsInteractor
+// MARK: - Stub
 
 final class StubUserPermissionsInteractor: UserPermissionsInteractor {
     func resolveStatus(for permission: Permission) {}

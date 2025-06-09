@@ -9,8 +9,7 @@ import SwiftUI
 import AuthenticationServices
 import OSLog
 
-final class WebAuthContextProvider: NSObject,
-                                    ASWebAuthenticationPresentationContextProviding {
+final class WebAuthContextProvider: NSObject, ASWebAuthenticationPresentationContextProviding {
     
     func presentationAnchor(for session: ASWebAuthenticationSession)
     -> ASPresentationAnchor {
@@ -26,17 +25,16 @@ final class WebAuthContextProvider: NSObject,
 struct SignInView: View {
     
     @Environment(\.injected) private var injected
+    
     @State private var authSession: ASWebAuthenticationSession?
     @State private var contextProvider = WebAuthContextProvider()
     
-    private let logger = Logger(subsystem: Bundle.main.bundleIdentifier!,
-                                category: #file)
+    private let logger = Logger(subsystem: Bundle.main.bundleIdentifier!, category: #file)
     
     var body: some View {
         ZStack {
-            // Optional: background color or gradient
             Color(.systemGray6)
-                .edgesIgnoringSafeArea(.all)
+                .ignoresSafeArea()
             
             VStack(spacing: 40) {
                 Spacer()
@@ -74,32 +72,15 @@ struct SignInView: View {
     }
     
     private func startHostedUISignIn() {
-        let domain      = "capstone-auth.auth.ap-northeast-2.amazoncognito.com"
-        let clientId    = "4oliffdd79l5mmkibr801lcn16"
-        let redirectUri = "capstone://auth/callback"
-        let state       = UUID().uuidString
-        let nonce       = UUID().uuidString
+        let state = UUID().uuidString
+        let nonce = UUID().uuidString
         
-        var comps = URLComponents()
-        comps.scheme = "https"
-        comps.host   = domain
-        comps.path   = "/oauth2/authorize"
-        comps.queryItems = [
-            .init(name: "response_type",     value: "code"),
-            .init(name: "client_id",         value: clientId),
-            .init(name: "redirect_uri",      value: redirectUri),
-            .init(name: "scope",             value: "openid email profile"),
-            .init(name: "identity_provider", value: "SignInWithApple"),
-            .init(name: "state",             value: state),
-            .init(name: "nonce",             value: nonce)
-        ]
-        
-        guard let authURL = comps.url else { return }
+        let authURL = injected.interactors.authInteractor.makeHostedUISignInURL(state: state, nonce: nonce)
         
         authSession = ASWebAuthenticationSession(
             url: authURL,
-            callbackURLScheme: "capstone") { callbackURL, error in
-                
+            callbackURLScheme: "capstone"
+        ) { callbackURL, error in
                 guard let url = callbackURL,
                       let code = url.queryItem(named: "code") else { return }
                 
@@ -113,7 +94,7 @@ struct SignInView: View {
             }
         
         authSession?.presentationContextProvider = contextProvider
-        authSession?.prefersEphemeralWebBrowserSession = true  // optional
+        authSession?.prefersEphemeralWebBrowserSession = true
         authSession?.start()
     }
 }

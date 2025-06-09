@@ -9,21 +9,17 @@ import Foundation
 import Security
 
 protocol KeychainService {
-    /// Save the given string as the “authToken” in Keychain.
-    func save(token: String) throws
-
-    /// Delete any “authToken” entry from Keychain.
-    func deleteToken() throws
-
-    /// Attempt to read back the saved token.
-    /// - Returns: the token string if one exists, or nil if not found.
-    func getToken() throws -> String?
+    func saveAccessToken(_ token: String) throws
+    func saveRefreshToken(_ token: String) throws
+    func getAccessToken() throws -> String?
+    func getRefreshToken() throws -> String?
+    func deleteTokens() throws
 }
 
 enum KeychainError: Error, LocalizedError {
     case unexpectedStatus(OSStatus)
     case conversionError
-
+    
     var errorDescription: String? {
         switch self {
         case .unexpectedStatus(let status):
@@ -35,62 +31,77 @@ enum KeychainError: Error, LocalizedError {
 }
 
 struct RealKeychainService: KeychainService {
+    
     private let service = Bundle.main.bundleIdentifier ?? "Capstone"
-    private let account = "authToken"
-
-    func save(token: String) throws {
+    
+    private let accessTokenAccount = "accessToken"
+    private let refreshTokenAccount = "refreshToken"
+    
+    func saveAccessToken(_ token: String) throws {
         guard let tokenData = token.data(using: .utf8) else {
             throw KeychainError.conversionError
         }
-
-        // Delete any existing entry first
+        
+        // Delete existing accessToken entry
         let deleteQuery: [String: Any] = [
-            kSecClass as String:       kSecClassGenericPassword,
+            kSecClass as String:      kSecClassGenericPassword,
             kSecAttrService as String: service,
-            kSecAttrAccount as String: account
+            kSecAttrAccount as String: accessTokenAccount
         ]
         SecItemDelete(deleteQuery as CFDictionary)
-
-        // Now add the new value
+        
+        // Add new access token
         let addQuery: [String: Any] = [
-            kSecClass as String:            kSecClassGenericPassword,
-            kSecAttrService as String:      service,
-            kSecAttrAccount as String:      account,
-            kSecValueData as String:        tokenData,
-            kSecAttrAccessible as String:   kSecAttrAccessibleAfterFirstUnlock
+            kSecClass as String:          kSecClassGenericPassword,
+            kSecAttrService as String:    service,
+            kSecAttrAccount as String:    accessTokenAccount,
+            kSecValueData as String:      tokenData,
+            kSecAttrAccessible as String: kSecAttrAccessibleAfterFirstUnlock
         ]
-
+        
         let status = SecItemAdd(addQuery as CFDictionary, nil)
         guard status == errSecSuccess else {
             throw KeychainError.unexpectedStatus(status)
         }
     }
-
-    func deleteToken() throws {
+    
+    func saveRefreshToken(_ token: String) throws {
+        guard let tokenData = token.data(using: .utf8) else {
+            throw KeychainError.conversionError
+        }
+        
         let deleteQuery: [String: Any] = [
-            kSecClass as String:       kSecClassGenericPassword,
+            kSecClass as String:      kSecClassGenericPassword,
             kSecAttrService as String: service,
-            kSecAttrAccount as String: account
+            kSecAttrAccount as String: refreshTokenAccount
         ]
-        let status = SecItemDelete(deleteQuery as CFDictionary)
-        // errSecItemNotFound is fine—means nothing was there to begin with.
-        if status != errSecSuccess && status != errSecItemNotFound {
+        SecItemDelete(deleteQuery as CFDictionary)
+        
+        let addQuery: [String: Any] = [
+            kSecClass as String:          kSecClassGenericPassword,
+            kSecAttrService as String:    service,
+            kSecAttrAccount as String:    refreshTokenAccount,
+            kSecValueData as String:      tokenData,
+            kSecAttrAccessible as String: kSecAttrAccessibleAfterFirstUnlock
+        ]
+        
+        let status = SecItemAdd(addQuery as CFDictionary, nil)
+        guard status == errSecSuccess else {
             throw KeychainError.unexpectedStatus(status)
         }
     }
-
-    func getToken() throws -> String? {
+    
+    func getAccessToken() throws -> String? {
         let query: [String: Any] = [
-            kSecClass as String:            kSecClassGenericPassword,
-            kSecAttrService as String:      service,
-            kSecAttrAccount as String:      account,
-            kSecReturnData as String:       kCFBooleanTrue as Any,
-            kSecMatchLimit as String:       kSecMatchLimitOne
+            kSecClass as String:          kSecClassGenericPassword,
+            kSecAttrService as String:    service,
+            kSecAttrAccount as String:    accessTokenAccount,
+            kSecReturnData as String:     kCFBooleanTrue as Any,
+            kSecMatchLimit as String:     kSecMatchLimitOne
         ]
-
+        
         var item: CFTypeRef?
         let status = SecItemCopyMatching(query as CFDictionary, &item)
-
         switch status {
         case errSecSuccess:
             guard
@@ -100,18 +111,61 @@ struct RealKeychainService: KeychainService {
                 throw KeychainError.conversionError
             }
             return tokenString
-
         case errSecItemNotFound:
             return nil
-
         default:
             throw KeychainError.unexpectedStatus(status)
         }
     }
+    
+    func getRefreshToken() throws -> String? {
+        let query: [String: Any] = [
+            kSecClass as String:          kSecClassGenericPassword,
+            kSecAttrService as String:    service,
+            kSecAttrAccount as String:    refreshTokenAccount,
+            kSecReturnData as String:     kCFBooleanTrue as Any,
+            kSecMatchLimit as String:     kSecMatchLimitOne
+        ]
+        
+        var item: CFTypeRef?
+        let status = SecItemCopyMatching(query as CFDictionary, &item)
+        switch status {
+        case errSecSuccess:
+            guard
+                let data = item as? Data,
+                let tokenString = String(data: data, encoding: .utf8)
+            else {
+                throw KeychainError.conversionError
+            }
+            return tokenString
+        case errSecItemNotFound:
+            return nil
+        default:
+            throw KeychainError.unexpectedStatus(status)
+        }
+    }
+    
+    func deleteTokens() throws {
+        let deleteAccessQuery: [String: Any] = [
+            kSecClass as String:         kSecClassGenericPassword,
+            kSecAttrService as String:   service,
+            kSecAttrAccount as String:   accessTokenAccount
+        ]
+        let _ = SecItemDelete(deleteAccessQuery as CFDictionary)
+        
+        let deleteRefreshQuery: [String: Any] = [
+            kSecClass as String:         kSecClassGenericPassword,
+            kSecAttrService as String:   service,
+            kSecAttrAccount as String:   refreshTokenAccount
+        ]
+        let _ = SecItemDelete(deleteRefreshQuery as CFDictionary)
+    }
 }
 
 struct StubKeychainService: KeychainService {
-    func save(token: String) throws { /* no‐op */ }
-    func deleteToken() throws { /* no‐op */ }
-    func getToken() throws -> String? { return nil }
+    func saveAccessToken(_ token: String) throws {}
+    func saveRefreshToken(_ token: String) throws {}
+    func getAccessToken() throws -> String? { nil }
+    func getRefreshToken() throws -> String? { nil }
+    func deleteTokens() throws {}
 }

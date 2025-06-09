@@ -11,8 +11,14 @@ import SwiftData
 struct Scan: Identifiable, Hashable {
     let id: UUID
     let name: String
-    let usdzURL: URL
-    let processedDate: Date
+    let createdAt: Date
+    
+    func usdzURL(fileManager: FileManager) -> URL {
+        fileManager
+            .urls(for: .documentDirectory, in: .userDomainMask)[0]
+            .appendingPathComponent(self.id.uuidString)
+            .appendingPathComponent("model.usdz")
+    }
 }
 
 extension Persistence {
@@ -21,17 +27,14 @@ extension Persistence {
     final class Scan {
         @Attribute(.unique) var id: UUID
         var name: String
-        var usdzURL: URL
-        var processedDate: Date
+        var createdAt: Date
         
         init(id: UUID,
              name: String,
-             usdzURL: URL,
-             processedDate: Date = Date()) {
+             createdAt: Date = Date()) {
             self.id = id
             self.name = name
-            self.usdzURL = usdzURL
-            self.processedDate = processedDate
+            self.createdAt = createdAt
         }
     }
 }
@@ -39,18 +42,18 @@ extension Persistence {
 extension Persistence.Scan {
     
     convenience init(scan: Scan) {
-        self.init(id: scan.id,
-                  name: scan.name,
-                  usdzURL: scan.usdzURL,
-                  processedDate: scan.processedDate)
+        self.init(
+            id: scan.id,
+            name: scan.name,
+            createdAt: scan.createdAt
+        )
     }
 
     func toDomain() -> Scan {
         return Scan(
             id: id,
             name: name,
-            usdzURL: usdzURL,
-            processedDate: processedDate
+            createdAt: createdAt
         )
     }
 }

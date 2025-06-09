@@ -53,6 +53,7 @@ struct SettingsView: View {
                 } footer: {
                     if let userID = injected.services.defaultsService[.userID] {
                             Text("Logged in as \(userID)")
+                            .padding(.vertical)
                     }
                 }
             }

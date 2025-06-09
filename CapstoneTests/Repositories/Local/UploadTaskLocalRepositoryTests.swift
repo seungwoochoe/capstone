@@ -1,19 +1,18 @@
 //
-//  UploadTaskDBRepositoryTests.swift
+//  UploadTaskLocalRepositoryTests.swift
 //  CapstoneTests
 //
 //  Created by Seungwoo Choe on 2025-05-06.
 //
 
 import Foundation
-import SwiftData
 import Testing
 @testable import Capstone
 
-@Suite("RealUploadTaskDBRepository Tests")
-struct RealUploadTaskDBRepositoryTests {
+@Suite("RealUploadTaskLocalRepositoryTests")
+struct RealUploadTaskLocalRepositoryTests {
     
-    let repository = RealUploadTaskDBRepository(modelContainer: .inMemory)
+    let repository = RealUploadTaskLocalRepository(modelContainer: .inMemory)
     
     @Test("fetch returns empty when repository is new")
     func fetchEmpty() async throws {

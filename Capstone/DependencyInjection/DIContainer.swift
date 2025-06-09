@@ -6,57 +6,55 @@
 //
 
 import SwiftUI
-import SwiftData
 
 struct DIContainer {
     let appState: Store<AppState>
     let interactors: Interactors
     let services: Services
-
+    
     init(appState: Store<AppState> = .init(AppState()), services: Services, interactors: Interactors) {
         self.appState = appState
         self.services = services
         self.interactors = interactors
     }
-
+    
     init(appState: AppState, services: Services, interactors: Interactors) {
         self.init(appState: Store<AppState>(appState), services: services, interactors: interactors)
     }
 }
 
 extension DIContainer {
-    // MARK: - Web Repositories
+    
+    struct LocalRepositories {
+        let uploadTaskLocalRepository: UploadTaskLocalRepository
+        let scanLocalRepository: ScanLocalRepository
+    }
+    
     struct WebRepositories {
         let scanWebRepository: ScanWebRepository
         let authWebRepository: AuthWebRepository
         let pushTokenWebRepository: PushTokenWebRepository
     }
-
-    // MARK: - Database Repositories
-    struct DBRepositories {
-        let uploadTaskDBRepository: UploadTaskDBRepository
-        let scanDBRepository: ScanDBRepository
-    }
     
-    // MARK: - Services
     struct Services {
         let defaultsService: DefaultsService
         let keychainService: KeychainService
+        let fileManager: FileManager
         
         static var stub: Self {
             .init(
                 defaultsService: StubDefaultsService(),
-                keychainService: StubKeychainService()
+                keychainService: StubKeychainService(),
+                fileManager: FileManager.default
             )
         }
     }
-
-    // MARK: - Interactors
+    
     struct Interactors {
         let scanInteractor: ScanInteractor
         let authInteractor: AuthInteractor
         let userPermissions: UserPermissionsInteractor
-
+        
         // For testing and previews.
         static var stub: Self {
             .init(
