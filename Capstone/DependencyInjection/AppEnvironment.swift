@@ -119,7 +119,7 @@ extension AppEnvironment {
         do {
             return try ModelContainer.appModelContainer()
         } catch {
-            let logger = Logger(subsystem: Bundle.main.bundleIdentifier!, category: #file)
+            let logger = Logger.forType(AppEnvironment.self)
             logger.debug("Failed to initialize the ModelContainer: \(error)")
             return ModelContainer.inMemory
         }

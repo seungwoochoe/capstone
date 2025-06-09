@@ -46,7 +46,7 @@ struct RealScanWebRepository: ScanWebRepository {
     let tokenProvider: AccessTokenProvider
     let defaultsService: DefaultsService
     let fileManager: FileManager
-    private let logger = Logger(subsystem: Bundle.main.bundleIdentifier!, category: #file)
+    private let logger = Logger.forType(RealScanWebRepository.self)
     
     init(session: URLSession = .shared,
          baseURL: String,

@@ -54,7 +54,7 @@ struct ContentView: View {
     @State private var selected: Scan? = nil
     @State private var showingCameraAccessDeniedAlert: Bool = false
     
-    private let logger = Logger(subsystem: Bundle.main.bundleIdentifier!, category: #file)
+    private let logger = Logger.forType(ContentView.self)
     
     // Filter + Sort Logic
     

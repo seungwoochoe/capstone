@@ -33,7 +33,7 @@ class RealScanInteractor: ScanInteractor {
     private let scanLocalRepository: ScanLocalRepository
     private var defaultsService: DefaultsService
     private let fileManager: FileManager
-    private let logger = Logger(subsystem: Bundle.main.bundleIdentifier!, category: #file)
+    private let logger = Logger.forType(RealScanInteractor.self)
     
     init(appState: Store<AppState>,
          webRepository: ScanWebRepository,

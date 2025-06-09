@@ -38,7 +38,7 @@ protocol DeepLinksHandler {
 struct RealDeepLinksHandler: DeepLinksHandler {
     
     private let container: DIContainer
-    private let logger = Logger(subsystem: Bundle.main.bundleIdentifier!, category: #file)
+    private let logger = Logger.forType(RealDeepLinksHandler.self)
     
     init(diContainer: DIContainer) {
         self.container = diContainer

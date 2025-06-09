@@ -10,17 +10,18 @@ import RealityKit
 import ARKit
 import OSLog
 
-private let logger = Logger(subsystem: Bundle.main.bundleIdentifier!, category: "PointCloudScanner")
-
 /// Model object that gathers LiDAR mesh vertices (with per‑vertex colour)
 /// and exports them as a PLY file. Works together with ARViewContainer
 /// that feeds it `ARMeshAnchor` updates.
 class PointCloudScanner: ObservableObject {
+    
     // MARK: – Types
     struct ColoredPoint {
         var xyz: SIMD3<Float>
         var rgb: SIMD3<UInt8>
     }
+    
+    private let logger = Logger.forType(PointCloudScanner.self)
     
     // MARK: – Published state
     @Published private(set) var isScanning: Bool = true
@@ -103,7 +104,7 @@ class PointCloudScanner: ObservableObject {
                 try ply.write(to: url, atomically: true, encoding: .ascii)
                 DispatchQueue.main.async { completion(url) }
             } catch {
-                logger.error("PLY export error: \(error.localizedDescription)")
+                self.logger.error("PLY export error: \(error.localizedDescription)")
                 DispatchQueue.main.async { completion(nil) }
             }
         }

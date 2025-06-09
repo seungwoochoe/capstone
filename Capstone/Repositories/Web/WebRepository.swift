@@ -9,7 +9,7 @@ import Foundation
 import Combine
 import OSLog
 
-private let logger = Logger(subsystem: Bundle.main.bundleIdentifier!, category: #file)
+private let logger = Logger.forType(WebRepository.self)
 
 protocol WebRepository {
     var session: URLSession { get }

@@ -38,7 +38,7 @@ struct RealAuthenticationWebRepository: AuthWebRepository {
     private let clientId: String
     private let redirectUri: String
     
-    private let logger = Logger(subsystem: Bundle.main.bundleIdentifier!, category: #file)
+    private let logger = Logger.forType(RealAuthenticationWebRepository.self)
     
     init(session: URLSession, userPoolDomain: String, clientId: String, redirectUri: String) {
         self.session = session

@@ -24,8 +24,7 @@ struct RoomScannerView: View {
     @State private var isScanNamePromptPresented: Bool = false
     @State private var scanName: String = ""
     
-    private let logger = Logger(subsystem: Bundle.main.bundleIdentifier!,
-                                category: String(describing: RoomScannerView.self))
+    private let logger = Logger.forType(RoomScannerView.self)
     
     var body: some View {
         ZStack(alignment: .bottom) {

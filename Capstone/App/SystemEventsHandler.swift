@@ -24,7 +24,7 @@ struct RealSystemEventsHandler: SystemEventsHandler {
     private let pushNotificationsHandler: PushNotificationsHandler
     private let pushTokenWebRepository: PushTokenWebRepository
     private let cancelBag = CancelBag()
-    private let logger = Logger(subsystem: Bundle.main.bundleIdentifier!, category: #file)
+    private let logger = Logger.forType(RealSystemEventsHandler.self)
     
     init(container: DIContainer,
          deepLinksHandler: DeepLinksHandler,
