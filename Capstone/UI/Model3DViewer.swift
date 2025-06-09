@@ -20,13 +20,13 @@ struct Model3DViewer: View {
     var body: some View {
         NavigationStack {
             ZStack {
-                PLYModelView(plyURL: Bundle.main.url(forResource: "sample", withExtension: "ply")!)
+                PLYModelView(plyURL: scan.modelURL(fileManager: injected.services.fileManager))
                     .ignoresSafeArea()
                 
                 VStack {
                     Spacer()
                     HStack(spacing: 60) {
-                        ShareLink(item: scan.usdzURL(fileManager: injected.services.fileManager)) {
+                        ShareLink(item: scan.modelURL(fileManager: injected.services.fileManager)) {
                             Label("Export", systemImage: "square.and.arrow.up")
                                 .padding()
                                 .background(Capsule().fill(Color.blue.opacity(0.9)))

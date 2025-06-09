@@ -15,7 +15,7 @@ protocol ScanInteractor {
     func updateSortOrder(_ sortOrder: SortOrder) async
     func fetchUploadTasks() async throws
     func fetchScans() async throws
-    func storeUploadTask(scanName: String, images: [UIImage]) async throws -> UploadTask
+    func storeUploadTask(scanName: String, fileURL: URL) async throws -> UploadTask
     func uploadPendingTasks() async
     func upload(_ uploadTask: UploadTask) async throws
     func delete(_ uploadTask: UploadTask) async throws
@@ -71,19 +71,19 @@ class RealScanInteractor: ScanInteractor {
         try await publishScans()
     }
     
-    func storeUploadTask(scanName: String, images: [UIImage]) async throws -> UploadTask {
+    func storeUploadTask(scanName: String, fileURL: URL) async throws -> UploadTask {
         let taskID = UUID()
-        let imageURLs = try saveImagesToDisk(images: images, forTask: taskID)
-        
+        let storedURL = try saveFileToDisk(fileURL: fileURL, forTask: taskID)
+
         let uploadTask = UploadTask(id: taskID,
                                     name: scanName,
-                                    imageURLs: imageURLs,
+                                    fileURL: storedURL,
                                     createdAt: Date(),
                                     retryCount: 0,
                                     uploadStatus: .pendingUpload)
         
         try await uploadTaskLocalRepository.store(uploadTask)
-        logger.info("Stored upload task \(uploadTask.id.uuidString, privacy: .public)")
+        logger.info("Stored upload task \(taskID.uuidString, privacy: .public)")
         
         try await publishUploadTasks()
         return uploadTask
@@ -106,7 +106,6 @@ class RealScanInteractor: ScanInteractor {
                     logger.error("Failed uploading task \(task.id.uuidString, privacy: .public): \(error.localizedDescription, privacy: .public)")
                 }
             }
-            logger.debug("Completed processing pending tasks")
         } catch {
             logger.error("Could not fetch upload tasks: \(error.localizedDescription, privacy: .public)")
         }
@@ -118,14 +117,10 @@ class RealScanInteractor: ScanInteractor {
         try await uploadTaskLocalRepository.update(mutableTask)
         
         do {
-            logger.debug("Reading image data for upload task")
-            let imageDatas = try uploadTask.imageURLs.map { url in
-                try Data(contentsOf: url)
-            }
-            logger.debug("Uploading \(imageDatas.count) images to web repository for task \(uploadTask.id.uuidString, privacy: .public)")
+            logger.debug("Reading point‑cloud data for upload task")
+            let data = try Data(contentsOf: uploadTask.fileURL)
             
-            _ = try await webRepository.uploadScan(id: uploadTask.id.uuidString,
-                                                   images: imageDatas)
+            _ = try await webRepository.uploadScan(id: uploadTask.id.uuidString, file: data)
             logger.info("Upload successful for task \(uploadTask.id.uuidString, privacy: .public)")
             
             mutableTask.uploadStatus = .waitingForResult
@@ -152,8 +147,8 @@ class RealScanInteractor: ScanInteractor {
     
     func delete(_ uploadTask: UploadTask) async throws {
         try await uploadTaskLocalRepository.delete(uploadTask)
-        try deleteImagesFromDisk(for: uploadTask)
-        logger.info("Deleted upload task and images for \(uploadTask.id.uuidString, privacy: .public)")
+        try deleteFileFromDisk(for: uploadTask)
+        logger.info("Deleted upload task and file for \(uploadTask.id.uuidString, privacy: .public)")
         try await publishUploadTasks()
     }
     
@@ -167,9 +162,7 @@ class RealScanInteractor: ScanInteractor {
     
     private func fetchResult(for scanID: String) async throws {
         logger.debug("Fetching result for scanID \(scanID, privacy: .public)")
-        
-        guard var uploadTask = try await uploadTaskLocalRepository
-            .fetch().first(where: { $0.id.uuidString == scanID }) else {
+        guard var uploadTask = try await uploadTaskLocalRepository.fetch().first(where: { $0.id.uuidString == scanID }) else {
             logger.info("No upload task found for scanID \(scanID, privacy: .public)")
             return
         }
@@ -187,12 +180,12 @@ class RealScanInteractor: ScanInteractor {
             return
         }
         
-        guard let usdzURL = response.usdzURL else {
-            logger.warning("No USDZ URL provided for finished scanID \(scanID, privacy: .public)")
+        guard let modelURL = response.modelURL else {
+            logger.warning("No model URL provided for finished scanID \(scanID, privacy: .public)")
             return
         }
-        logger.debug("Downloading USDZ from \(usdzURL.absoluteString, privacy: .public) for scanID \(scanID, privacy: .public)")
-        try await webRepository.downloadUSDZ(from: usdzURL, scanID: scanID)
+        logger.debug("Downloading model from \(modelURL.absoluteString, privacy: .public) for scanID \(scanID, privacy: .public)")
+        try await webRepository.downloadUSDZ(from: modelURL, scanID: scanID)
         
         let scan = Scan(id: uploadTask.id,
                         name: uploadTask.name,
@@ -206,51 +199,43 @@ class RealScanInteractor: ScanInteractor {
     
     // MARK: File‑system utilities
     
-    private func imagesFolderURL(for id: UUID) throws -> URL {
+    private func scanFolderURL(for id: UUID) throws -> URL {
         guard let docs = fileManager.urls(for: .documentDirectory, in: .userDomainMask).first else {
             logger.error("Could not locate Documents directory for task \(id.uuidString, privacy: .public)")
             throw CocoaError(.fileNoSuchFile)
         }
         let folder = docs.appendingPathComponent(id.uuidString, isDirectory: true)
-        
         if !fileManager.fileExists(atPath: folder.path) {
-            try fileManager.createDirectory(at: folder,
-                                            withIntermediateDirectories: true,
-                                            attributes: nil)
-            logger.debug("Created image folder at \(folder.path, privacy: .public)")
+            try fileManager.createDirectory(at: folder, withIntermediateDirectories: true)
+            logger.debug("Created task folder at \(folder.path, privacy: .public)")
         }
         return folder
     }
     
-    private func saveImagesToDisk(images: [UIImage], forTask id: UUID) throws -> [URL] {
-        let folderURL = try imagesFolderURL(for: id)
-        var savedURLs: [URL] = []
-        
-        for (index, image) in images.enumerated() {
-            let filename = "\(index + 1).jpg"
-            let fileURL = folderURL.appendingPathComponent(filename)
-            
-            guard let data = image.jpegData(compressionQuality: 0.3) else {
-                logger.error("Could not encode image \(index) for task \(id.uuidString, privacy: .public)")
-                continue
-            }
-            try data.write(to: fileURL, options: .atomic)
-            savedURLs.append(fileURL)
+    private func saveFileToDisk(fileURL: URL, forTask id: UUID) throws -> URL {
+        let folderURL = try scanFolderURL(for: id)
+        let destURL = folderURL.appendingPathComponent(fileURL.lastPathComponent)
+        if fileManager.fileExists(atPath: destURL.path) {
+            try fileManager.removeItem(at: destURL)
         }
-        logger.debug("Saved \(savedURLs.count) images to disk at \(folderURL.path)")
-        return savedURLs
+        try fileManager.copyItem(at: fileURL, to: destURL)
+        logger.debug("Saved point‑cloud to \(destURL.path, privacy: .public)")
+        return destURL
     }
     
-    private func deleteImagesFromDisk(for uploadTask: UploadTask) throws {
-        let folder = try imagesFolderURL(for: uploadTask.id)
+    private func deleteFileFromDisk(for uploadTask: UploadTask) throws {
+        let folder = try scanFolderURL(for: uploadTask.id)
+        let pointCloudURL = folder.appendingPathComponent("pointcloud.ply")
         
-        try fileManager.contentsOfDirectory(at: folder, includingPropertiesForKeys: nil)
-                    .filter { $0.pathExtension == "jpg" }
-                    .forEach {
-                        try fileManager.removeItem(at: $0)
-                    }
-        logger.debug("Deleted image folder at \(folder.path, privacy: .public)")
+        if fileManager.fileExists(atPath: pointCloudURL.path) {
+            try fileManager.removeItem(at: pointCloudURL)
+            logger.debug("Deleted pointcloud.ply at \(pointCloudURL.path, privacy: .public)")
+        } else {
+            logger.debug("pointcloud.ply not found at \(pointCloudURL.path, privacy: .public)")
+        }
     }
+    
+    // MARK: – Publishers
     
     private func publishScans() async throws {
         let scans = try await scanLocalRepository.fetch()
@@ -269,14 +254,14 @@ class RealScanInteractor: ScanInteractor {
     }
 }
 
-// MARK: - Stub
+// MARK: – Stub
 
 struct StubScanInteractor: ScanInteractor {
     func updateSortField(_ sortField: SortField) async {}
     func updateSortOrder(_ sortOrder: SortOrder) async {}
     func fetchUploadTasks() async throws {}
     func fetchScans() async throws {}
-    func storeUploadTask(scanName: String, images: [UIImage]) async throws -> UploadTask { .sample }
+    func storeUploadTask(scanName: String, fileURL: URL) async throws -> UploadTask { .sample }
     func upload(_ uploadTask: UploadTask) async throws {}
     func uploadPendingTasks() async {}
     func delete(_ uploadTask: UploadTask) async throws {}

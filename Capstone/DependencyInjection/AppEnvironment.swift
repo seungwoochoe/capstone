@@ -21,9 +21,9 @@ extension AppEnvironment {
     
     static func bootstrap() -> AppEnvironment {
         
-        let baseURL = "https://zja1e0i6q3.execute-api.ap-northeast-2.amazonaws.com"
+        let baseURL = "https://ew82om2ujg.execute-api.ap-northeast-2.amazonaws.com"
         let userPoolDomain = "capstone-auth.auth.ap-northeast-2.amazoncognito.com"
-        let clientId = "e1qm45pglp5535sm87vljooqa"
+        let clientId = "1rhsfbm6627ga4lbhog4gsknbg"
         let redirectUri = "capstone://auth/callback"
         
         let services = configuredServices()

@@ -242,6 +242,8 @@ struct ContentView: View {
                                         } else {
                                             showingCameraAccessDeniedAlert = true
                                         }
+                                        
+                                        try await injected.interactors.userPermissions.request(permission: .pushNotifications)
                                     } catch {
                                         logger.error("Camera permission failed: \(error)")
                                     }
@@ -345,7 +347,7 @@ struct ScanRowView: View {
     var body: some View {
         HStack(spacing: 18) {
             USDZThumbnailView(
-                url: scan.usdzURL(fileManager: injected.services.fileManager),
+                url: scan.modelURL(fileManager: injected.services.fileManager),
                 size: CGSize(width: 50, height: 50)
             )
             Text(scan.name)

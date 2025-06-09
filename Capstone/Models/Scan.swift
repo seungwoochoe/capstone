@@ -13,11 +13,11 @@ struct Scan: Identifiable, Hashable {
     let name: String
     let createdAt: Date
     
-    func usdzURL(fileManager: FileManager) -> URL {
+    func modelURL(fileManager: FileManager) -> URL {
         fileManager
             .urls(for: .documentDirectory, in: .userDomainMask)[0]
             .appendingPathComponent(self.id.uuidString)
-            .appendingPathComponent("model.usdz")
+            .appendingPathComponent("model.ply")
     }
 }
 

@@ -129,10 +129,32 @@ struct RealAuthenticationWebRepository: AuthWebRepository {
         }
         
         let parts = idToken.split(separator: ".")
-        guard parts.count >= 2,
-              let data = Data(base64Encoded: String(parts[1])) else {
+        guard parts.count == 3 else {
+            logger.error("Invalid JWT format—expected 3 parts but got \(parts.count, privacy: .public)")
             throw APIError.unexpectedResponse
         }
-        return try JSONDecoder().decode(Payload.self, from: data).sub
+
+        var base64 = parts[1]
+            .replacingOccurrences(of: "-", with: "+")
+            .replacingOccurrences(of: "_", with: "/")
+
+        let padLen = 4 - (base64.count % 4)
+        if padLen < 4 {
+            base64 += String(repeating: "=", count: padLen)
+        }
+
+        guard let payloadData = Data(base64Encoded: base64) else {
+            logger.error("Failed to Base64-decode payload (length \(base64.count), padding added: \(padLen))")
+            throw APIError.unexpectedResponse
+        }
+
+        do {
+            let payload = try JSONDecoder().decode(Payload.self, from: payloadData)
+            logger.debug("Extracted userID from id_token: \(payload.sub, privacy: .private)")
+            return payload.sub
+        } catch {
+            logger.error("Payload JSON decode error: \(error.localizedDescription, privacy: .public)")
+            throw error
+        }
     }
 }
