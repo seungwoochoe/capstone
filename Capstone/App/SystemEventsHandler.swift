@@ -10,7 +10,6 @@ import Combine
 import OSLog
 
 protocol SystemEventsHandler {
-    func sceneOpenURLContexts(_ urlContexts: Set<UIOpenURLContext>)
     func sceneDidBecomeActive()
     func sceneWillResignActive()
     func handlePushRegistration(result: Result<Data, Error>)
@@ -50,40 +49,6 @@ struct RealSystemEventsHandler: SystemEventsHandler {
                 }
             }
             .store(in: cancelBag)
-    }
-    
-    func sceneOpenURLContexts(_ urlContexts: Set<UIOpenURLContext>) {
-        logger.debug("sceneOpenURLContexts received contexts: \(urlContexts).")
-        guard let url = urlContexts.first?.url else {
-            logger.warning("No URL found in openURLContexts.")
-            return
-        }
-        handle(url: url)
-    }
-    
-    private func handle(url: URL) {
-        logger.debug("Processing URL: \(url.absoluteString, privacy: .public).")
-        
-        if url.host == "auth", url.path == "/callback",
-           let code = url.queryItem(named: "code") {
-            logger.info("Auth callback received with code: \(code, privacy: .private).")
-            Task {
-                do {
-                    try await container.interactors.authInteractor.completeSignIn(authorizationCode: code)
-                    logger.info("Sign-in completed successfully.")
-                } catch {
-                    logger.error("Sign-in completion failed: \(error.localizedDescription, privacy: .public).")
-                }
-            }
-            return
-        }
-        
-        guard let deepLink = DeepLink(url: url) else {
-            logger.warning("Unrecognized deep link URL: \(url.absoluteString, privacy: .public).")
-            return
-        }
-        
-        deepLinksHandler.open(deepLink: deepLink)
     }
     
     func sceneDidBecomeActive() {

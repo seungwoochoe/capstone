@@ -9,24 +9,7 @@ import Foundation
 import OSLog
 
 enum DeepLink: Equatable {
-    
     case showScan(scanID: String)
-    
-    init?(url: URL) {
-        guard let components = URLComponents(url: url, resolvingAgainstBaseURL: true),
-              components.host == "www.example.com",
-              let queryItems = components.queryItems
-        else {
-            return nil
-        }
-        
-        if let item = queryItems.first(where: { $0.name == "scanID" }),
-           let scanID = item.value {
-            self = .showScan(scanID: scanID)
-            return
-        }
-        return nil
-    }
 }
 
 // MARK: - DeepLinksHandler
