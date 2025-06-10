@@ -346,7 +346,7 @@ struct ScanRowView: View {
     
     var body: some View {
         HStack(spacing: 18) {
-            USDZThumbnailView(
+            ThumbnailView(
                 url: scan.modelURL(fileManager: injected.services.fileManager),
                 size: CGSize(width: 50, height: 50)
             )
