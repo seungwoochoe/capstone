@@ -10,7 +10,7 @@ import SwiftData
 
 struct Scan: Identifiable, Hashable {
     let id: UUID
-    let name: String
+    var name: String
     let createdAt: Date
     
     func modelURL(fileManager: FileManager) -> URL {

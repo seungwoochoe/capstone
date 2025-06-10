@@ -18,6 +18,7 @@ protocol ScanInteractor {
     func storeUploadTask(scanName: String, fileURL: URL) async throws -> UploadTask
     func uploadPendingTasks() async
     func upload(_ uploadTask: UploadTask) async throws
+    func rename(_ scan: Scan, to newName: String) async throws
     func delete(_ uploadTask: UploadTask) async throws
     func delete(_ scan: Scan) async throws
     func handlePush(scanID: String) async
@@ -136,12 +137,12 @@ class RealScanInteractor: ScanInteractor {
         }
     }
     
-    func handlePush(scanID: String) async {
-        do {
-            try await fetchResult(for: scanID)
-        } catch {
-            logger.error("Failed to handle push for scan \(scanID, privacy: .public): \(error.localizedDescription, privacy: .public).")
-        }
+    func rename(_ scan: Scan, to newName: String) async throws {
+        var updated = scan
+        updated.name = newName
+        try await scanLocalRepository.store(updated)
+        logger.info("Renamed scan \(scan.id.uuidString, privacy: .public) to \(newName)")
+        try await publishScans()
     }
     
     func delete(_ uploadTask: UploadTask) async throws {
@@ -155,6 +156,14 @@ class RealScanInteractor: ScanInteractor {
         try await scanLocalRepository.delete(scan)
         logger.info("Deleted scan \(scan.id.uuidString, privacy: .public).")
         try await publishScans()
+    }
+    
+    func handlePush(scanID: String) async {
+        do {
+            try await fetchResult(for: scanID)
+        } catch {
+            logger.error("Failed to handle push for scan \(scanID, privacy: .public): \(error.localizedDescription, privacy: .public).")
+        }
     }
     
     // MARK: - Private helpers
@@ -265,6 +274,7 @@ struct StubScanInteractor: ScanInteractor {
     func storeUploadTask(scanName: String, fileURL: URL) async throws -> UploadTask { .sample }
     func upload(_ uploadTask: UploadTask) async throws {}
     func uploadPendingTasks() async {}
+    func rename(_ scan: Scan, to newName: String) async throws {}
     func delete(_ uploadTask: UploadTask) async throws {}
     func delete(_ scan: Scan) async throws {}
     func handlePush(scanID: String) async {}

@@ -13,10 +13,19 @@ struct Model3DViewer: View {
     
     @Environment(\.dismiss) private var dismiss
     @Environment(\.injected) private var injected
-    
+
     let scan: Scan
-    let logger = Logger.forType(Model3DViewer.self)
+    @State private var displayName: String
+    @State private var isShowingRenameAlert = false
+    @State private var newName: String = ""
     
+    private let logger = Logger.forType(Model3DViewer.self)
+
+    init(scan: Scan) {
+        self.scan = scan
+        _displayName = State(initialValue: scan.name)
+    }
+
     var body: some View {
         NavigationStack {
             ZStack {
@@ -45,11 +54,33 @@ struct Model3DViewer: View {
                     .padding()
                 }
             }
-            .navigationTitle(scan.name)
+            .navigationTitle(displayName)
             .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Menu {
+                        Button("Rename") {
+                            newName = displayName
+                            isShowingRenameAlert = true
+                        }
+                    } label: {
+                        Image(systemName: "ellipsis.circle")
+                            .imageScale(.large)
+                    }
+                }
+            }
+            .alert("Rename Scan", isPresented: $isShowingRenameAlert, actions: {
+                TextField("New name", text: $newName)
+                Button("Cancel", role: .cancel) { }
+                Button("Save") {
+                    commitRename()
+                }
+            }, message: {
+                Text("Enter a new name for this scan.")
+            })
         }
     }
-    
+
     private func delete(_ scan: Scan) {
         Task {
             do {
@@ -57,6 +88,17 @@ struct Model3DViewer: View {
                 dismiss()
             } catch {
                 logger.debug("Error deleting scan: \(error)")
+            }
+        }
+    }
+
+    private func commitRename() {
+        Task {
+            do {
+                try await injected.interactors.scanInteractor.rename(scan, to: newName)
+                displayName = newName
+            } catch {
+                logger.error("Rename failed: \(error.localizedDescription, privacy: .public)")
             }
         }
     }
