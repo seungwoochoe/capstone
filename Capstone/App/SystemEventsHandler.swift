@@ -23,6 +23,7 @@ struct RealSystemEventsHandler: SystemEventsHandler {
     private let pushNotificationsHandler: PushNotificationsHandler
     private let pushTokenWebRepository: PushTokenWebRepository
     private let cancelBag = CancelBag()
+    
     private let logger = Logger.forType(RealSystemEventsHandler.self)
     
     init(container: DIContainer,
@@ -56,7 +57,8 @@ struct RealSystemEventsHandler: SystemEventsHandler {
         container.interactors.userPermissions.resolveStatus(for: .pushNotifications)
         container.interactors.userPermissions.resolveStatus(for: .camera)
         
-        if container.appState[\.permissions.push] == .granted {
+        if container.appState[\.auth.isSignedIn],
+           container.appState[\.permissions.push] == .granted {
             UIApplication.shared.registerForRemoteNotifications()
             logger.debug("Called UIApplication.shared.registerForRemoteNotifications (sceneDidBecomeActive).")
         }
