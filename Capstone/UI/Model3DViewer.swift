@@ -13,20 +13,29 @@ struct Model3DViewer: View {
     
     @Environment(\.dismiss) private var dismiss
     @Environment(\.injected) private var injected
-    
+
     let scan: Scan
-    let logger = Logger(subsystem: Bundle.main.bundleIdentifier!, category: #file)
+    @State private var displayName: String
+    @State private var isShowingRenameAlert = false
+    @State private var newName: String = ""
     
+    private let logger = Logger.forType(Model3DViewer.self)
+
+    init(scan: Scan) {
+        self.scan = scan
+        _displayName = State(initialValue: scan.name)
+    }
+
     var body: some View {
         NavigationStack {
             ZStack {
-                PLYModelView(plyURL: Bundle.main.url(forResource: "sample", withExtension: "ply")!)
+                PLYModelView(plyURL: scan.modelURL(fileManager: injected.services.fileManager))
                     .ignoresSafeArea()
                 
                 VStack {
                     Spacer()
                     HStack(spacing: 60) {
-                        ShareLink(item: scan.usdzURL(fileManager: injected.services.fileManager)) {
+                        ShareLink(item: scan.modelURL(fileManager: injected.services.fileManager)) {
                             Label("Export", systemImage: "square.and.arrow.up")
                                 .padding()
                                 .background(Capsule().fill(Color.blue.opacity(0.9)))
@@ -45,11 +54,33 @@ struct Model3DViewer: View {
                     .padding()
                 }
             }
-            .navigationTitle(scan.name)
+            .navigationTitle(displayName)
             .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Menu {
+                        Button("Rename") {
+                            newName = displayName
+                            isShowingRenameAlert = true
+                        }
+                    } label: {
+                        Image(systemName: "ellipsis.circle")
+                            .imageScale(.large)
+                    }
+                }
+            }
+            .alert("Rename Scan", isPresented: $isShowingRenameAlert, actions: {
+                TextField("New name", text: $newName)
+                Button("Cancel", role: .cancel) { }
+                Button("Save") {
+                    commitRename()
+                }
+            }, message: {
+                Text("Enter a new name for this scan.")
+            })
         }
     }
-    
+
     private func delete(_ scan: Scan) {
         Task {
             do {
@@ -60,12 +91,23 @@ struct Model3DViewer: View {
             }
         }
     }
+
+    private func commitRename() {
+        Task {
+            do {
+                try await injected.interactors.scanInteractor.rename(scan, to: newName)
+                displayName = newName
+            } catch {
+                logger.error("Rename failed: \(error.localizedDescription, privacy: .public)")
+            }
+        }
+    }
 }
 
 private struct USDZModelView: UIViewRepresentable {
     
     let modelURL: URL
-    private let logger = Logger(subsystem: Bundle.main.bundleIdentifier!, category: "USDZModelView")
+    private let logger = Logger.forType(USDZModelView.self)
     
     func makeUIView(context: Context) -> SCNView {
         let sceneView = SCNView()
@@ -91,7 +133,7 @@ private struct USDZModelView: UIViewRepresentable {
 private struct PLYModelView: UIViewRepresentable {
     
     let plyURL: URL
-    private let logger = Logger(subsystem: Bundle.main.bundleIdentifier!, category: "PLYModelView")
+    private let logger = Logger.forType(PLYModelView.self)
     
     func makeUIView(context: Context) -> SCNView {
         let scnView = SCNView()

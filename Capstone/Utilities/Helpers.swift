@@ -8,6 +8,7 @@
 import Foundation
 import Combine
 import SwiftData
+import OSLog
 
 extension ProcessInfo {
     var isRunningTests: Bool {
@@ -19,6 +20,14 @@ enum SCApp {
     static let name = Bundle.main.object(forInfoDictionaryKey: kCFBundleNameKey as String) as! String
     static let licence = Bundle.main.object(forInfoDictionaryKey: "NSHumanReadableCopyright") as! String
     static let version = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as! String
+}
+
+extension Logger {
+    private static let subsystem = Bundle.main.bundleIdentifier!
+    
+    static func forType<T>(_ type: T.Type) -> Logger {
+        .init(subsystem: subsystem, category: String(describing: type))
+    }
 }
 
 enum ModelContextError: Error {
@@ -50,4 +59,3 @@ extension URL {
             .queryItems?.first(where: { $0.name == name })?.value
     }
 }
-

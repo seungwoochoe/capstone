@@ -6,6 +6,7 @@
 //
 
 import Foundation
+import OSLog
 
 // MARK: - AuthInteractor
 
@@ -24,6 +25,8 @@ final class RealAuthInteractor: AuthInteractor {
     private let keychainService: KeychainService
     private var defaultsService: DefaultsService
     
+    private let logger = Logger.forType(RealAuthInteractor.self)
+    
     init(appState: Store<AppState>,
          webRepository: AuthWebRepository,
          keychainService: KeychainService,
@@ -35,32 +38,46 @@ final class RealAuthInteractor: AuthInteractor {
     }
     
     func makeHostedUISignInURL(state: String, nonce: String) -> URL {
+        logger.debug("Creating Hosted UI sign-in URL.")
         return webRepository.makeHostedUISignInURL(state: state, nonce: nonce)
     }
-
+    
     func completeSignIn(authorizationCode code: String) async throws {
-        let authResponse = try await webRepository.exchange(code: code)
-        
-        try keychainService.saveAccessToken(authResponse.accessToken)
-        try keychainService.saveRefreshToken(authResponse.refreshToken)
-        
-        let expirationDate = Date().addingTimeInterval(TimeInterval(authResponse.expiresIn))
-        defaultsService[.tokenExpirationDate] = expirationDate
-        defaultsService[.userID] = authResponse.userID
-        
-        Task { @MainActor in
-            appState[\.auth.isSignedIn] = true
+        do {
+            logger.debug("Exchanging authorization code for tokens.")
+            let authResponse = try await webRepository.exchange(code: code)
+            
+            try keychainService.saveAccessToken(authResponse.accessToken)
+            try keychainService.saveRefreshToken(authResponse.refreshToken)
+            
+            let expirationDate = Date().addingTimeInterval(TimeInterval(authResponse.expiresIn))
+            defaultsService[.tokenExpirationDate] = expirationDate
+            defaultsService[.userID] = authResponse.userID
+            
+            Task { @MainActor in
+                appState[\.auth.isSignedIn] = true
+            }
+            logger.info("User signed in successfully.")
+        } catch {
+            logger.error("Sign-in failed: \(error.localizedDescription, privacy: .public).")
+            throw error
         }
     }
     
     func signOut() async throws {
-        try keychainService.deleteTokens()
-        
-        defaultsService[.tokenExpirationDate] = Date.distantPast
-        defaultsService[.userID] = nil
-        
-        Task { @MainActor in
-            appState[\.auth.isSignedIn] = false
+        do {
+            try keychainService.deleteTokens()
+            
+            defaultsService[.tokenExpirationDate] = Date.distantPast
+            defaultsService[.userID] = nil
+            
+            Task { @MainActor in
+                appState[\.auth.isSignedIn] = false
+            }
+            logger.info("User signed out.")
+        } catch {
+            logger.error("Sign-out failed: \(error.localizedDescription, privacy: .public).")
+            throw error
         }
     }
 }

@@ -10,14 +10,14 @@ import SwiftData
 
 struct Scan: Identifiable, Hashable {
     let id: UUID
-    let name: String
+    var name: String
     let createdAt: Date
     
-    func usdzURL(fileManager: FileManager) -> URL {
+    func modelURL(fileManager: FileManager) -> URL {
         fileManager
             .urls(for: .documentDirectory, in: .userDomainMask)[0]
             .appendingPathComponent(self.id.uuidString)
-            .appendingPathComponent("model.usdz")
+            .appendingPathComponent("model.ply")
     }
 }
 

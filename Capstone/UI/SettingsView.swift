@@ -27,7 +27,7 @@ struct SettingsView: View {
                         VStack(spacing: 30) {
                             Image(systemName: "app.fill")
                                 .resizable()
-                                .foregroundStyle(.gray)
+                                .foregroundStyle(.gray).opacity(0.5)
                                 .frame(width: 100, height: 100)
                                 .cornerRadius(20)
                             
@@ -49,11 +49,6 @@ struct SettingsView: View {
                 Section {
                     NavigationLink("Acknowledgements") {
                         AcknowledgementsView(showingSettings: $showingSettings)
-                    }
-                } footer: {
-                    if let userID = injected.services.defaultsService[.userID] {
-                            Text("Logged in as \(userID)")
-                            .padding(.vertical)
                     }
                 }
             }

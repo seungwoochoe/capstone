@@ -17,10 +17,6 @@ final class SceneDelegate: UIResponder, UIWindowSceneDelegate, ObservableObject 
         Self.systemEventsHandler = handler
     }
     
-    func scene(_ scene: UIScene, openURLContexts URLContexts: Set<UIOpenURLContext>) {
-        systemEventsHandler?.sceneOpenURLContexts(URLContexts)
-    }
-    
     func sceneDidBecomeActive(_ scene: UIScene) {
         systemEventsHandler?.sceneDidBecomeActive()
     }

@@ -6,6 +6,7 @@
 //
 
 import Foundation
+import OSLog
 
 struct PresignedURLsResponse: Codable {
     let presigned: [URL]
@@ -13,11 +14,11 @@ struct PresignedURLsResponse: Codable {
 
 struct TaskStatusResponse: Codable, Equatable {
     let status: String     // "pending-upload" | "ready-for-processing" | "finished" | "failed"
-    let usdzURL: URL?
+    let modelURL: URL?
     let createdAt: Date?   // ISO-8601 timestamp
     
     enum CodingKeys: String, CodingKey {
-        case status, usdzURL = "usdzUrl", createdAt
+        case status, modelURL = "modelUrl", createdAt
     }
 }
 
@@ -31,9 +32,9 @@ enum DownloadError: Error {
 // MARK: - ScanWebRepository
 
 protocol ScanWebRepository: WebRepository {
-    func uploadScan(id: String, images: [Data]) async throws -> Bool
+    func upload(id: String, file: Data) async throws -> Bool
     func fetchTask(id: String) async throws -> TaskStatusResponse
-    func downloadUSDZ(from url: URL, scanID: String) async throws
+    func downloadModel(from url: URL, scanID: String) async throws
 }
 
 // MARK: - RealScanWebRepository
@@ -45,6 +46,8 @@ struct RealScanWebRepository: ScanWebRepository {
     let tokenProvider: AccessTokenProvider
     let defaultsService: DefaultsService
     let fileManager: FileManager
+    
+    private let logger = Logger.forType(RealScanWebRepository.self)
     
     init(session: URLSession = .shared,
          baseURL: String,
@@ -59,40 +62,45 @@ struct RealScanWebRepository: ScanWebRepository {
         self.fileManager = fileManager
     }
     
-    func uploadScan(id: String, images: [Data]) async throws -> Bool {
-        // STEP 1
+    func upload(id: String, file: Data) async throws -> Bool {
+        // STEP 1: ask backend for a presigned URL
         let presignedResponse: PresignedURLsResponse = try await call(
-            endpoint: API.CreateUploadUrls(scanID: id, count: images.count)
+            endpoint: API.CreateUploadUrls(scanID: id, fileCount: 1)
         )
-        let presigned = presignedResponse.presigned
-        
-        guard presigned.count == images.count else {
+        guard let uploadURL = presignedResponse.presigned.first else {
+            logger.error("No presigned upload URL received.")
             throw APIError.unexpectedResponse
         }
         
-        // STEP 2
-        try await withThrowingTaskGroup(of: Void.self) { group in
-            for (idx, url) in presigned.enumerated() {
-                let data = images[idx]
-                group.addTask {
-                    var req = URLRequest(url: url)
-                    req.httpMethod = "PUT"
-                    req.addValue("image/jpeg", forHTTPHeaderField: "Content-Type")
-                    _ = try await session.upload(for: req, from: data).1
-                }
+        // STEP 2: PUT the binary file to S3
+        var req = URLRequest(url: uploadURL)
+        req.httpMethod = "PUT"
+        req.setValue("application/octet-stream", forHTTPHeaderField: "Content-Type")
+        
+        let (data, uploadResp) = try await session.upload(for: req, from: file)
+        
+        if let httpResponse = uploadResp as? HTTPURLResponse {
+            if HTTPCodes.success.contains(httpResponse.statusCode) {
+                logger.info("S3 upload completed. Status code: \(httpResponse.statusCode).")
+            } else {
+                let body = String(data: data, encoding: .utf8) ?? "<non-textual data>"
+                logger.error("S3 upload failed. Status code: \(httpResponse.statusCode), body: \(body, privacy: .public).")
+                throw APIError.httpCode(httpResponse.statusCode)
             }
-            try await group.waitForAll()
+        } else {
+            logger.error("S3 upload completed but HTTP status could not be read.")
+            throw APIError.unexpectedResponse
         }
         
-        // STEP 3
+        // STEP 3: notify backend that upload is complete so processing can begin
         guard let endpointArn = defaultsService[.pushEndpointArn] else {
+            logger.error("Missing push endpoint ARN in defaults service.")
             throw APIError.unexpectedResponse
         }
         
         let okResponse: OKResponse = try await call(
             endpoint: API.UploadComplete(scanID: id, endpointArn: endpointArn)
         )
-        
         return okResponse.ok
     }
     
@@ -106,7 +114,7 @@ struct RealScanWebRepository: ScanWebRepository {
         )
     }
     
-    func downloadUSDZ(from url: URL, scanID: String) async throws {
+    func downloadModel(from url: URL, scanID: String) async throws {
         let (tmpURL, response) = try await session.download(from: url)
         
         guard
@@ -114,24 +122,24 @@ struct RealScanWebRepository: ScanWebRepository {
             HTTPCodes.success.contains(httpURLResponse.statusCode)
         else {
             let body = try? String(contentsOf: tmpURL, encoding: .utf8)
-            throw DownloadError.invalidStatus(code: (response as? HTTPURLResponse)?.statusCode,
-                                              body: body ?? "<unreadable>")
+            logger.error("Model download failed. Status code: \((response as? HTTPURLResponse)?.statusCode ?? -1), body: \(body ?? "<unreadable>", privacy: .public).")
+            throw DownloadError.invalidStatus(
+                code: (response as? HTTPURLResponse)?.statusCode,
+                body: body ?? "<unreadable>"
+            )
         }
         
         let docsDir = fileManager.urls(for: .documentDirectory, in: .userDomainMask)[0]
-        
         let scanDir = docsDir.appendingPathComponent(scanID)
-        try fileManager.createDirectory(
-            at: scanDir,
-            withIntermediateDirectories: true
-        )
+        try fileManager.createDirectory(at: scanDir, withIntermediateDirectories: true)
         
         let destURL = scanDir.appendingPathComponent(url.lastPathComponent)
         if fileManager.fileExists(atPath: destURL.path) {
             try fileManager.removeItem(at: destURL)
         }
-        
         try fileManager.moveItem(at: tmpURL, to: destURL)
+        
+        logger.debug("File saved to: \(destURL.path, privacy: .private).")
     }
 }
 
@@ -141,19 +149,19 @@ private extension RealScanWebRepository {
     
     enum API {
         
-        // 1) POST /upload-urls
+        // 1) POST /upload-urls – ask for 1 presigned URL
         struct CreateUploadUrls: APICall, Encodable {
             let scanID: String
-            let imageCount: Int
+            let fileCount: Int
             
-            init(scanID: String, count: Int) {
+            init(scanID: String, fileCount: Int) {
                 self.scanID = scanID
-                self.imageCount = count
+                self.fileCount = fileCount
             }
             
             var path: String { "/upload-urls" }
             var method: String { "POST" }
-            var headers: [String : String]? { ["Content-Type": "application/json"] }
+            var headers: [String: String]? { ["Content-Type": "application/json"] }
             func body() throws -> Data? { try JSONEncoder().encode(self) }
         }
         
@@ -164,12 +172,9 @@ private extension RealScanWebRepository {
             
             var path: String { "/scans/\(scanID)/complete" }
             var method: String { "POST" }
-            var headers: [String : String]? { ["Content-Type": "application/json"] }
-            
+            var headers: [String: String]? { ["Content-Type": "application/json"] }
             func body() throws -> Data? {
-                // We send { "snsEndpointArn": "<endpointArn>" }
-                let payload: [String: String] = ["snsEndpointArn": endpointArn]
-                return try JSONEncoder().encode(payload)
+                try JSONEncoder().encode(["snsEndpointArn": endpointArn])
             }
         }
         
@@ -178,7 +183,7 @@ private extension RealScanWebRepository {
             let id: String
             var path: String { "/scans/\(id)" }
             var method: String { "GET" }
-            var headers: [String : String]? { nil }
+            var headers: [String: String]? { nil }
             func body() throws -> Data? { nil }
         }
     }
