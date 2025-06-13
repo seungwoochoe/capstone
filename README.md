@@ -1,74 +1,103 @@
 # 3D Room Scanner
 
-This project is a SwiftUI-based application leveraging frameworks such as ARKit, RealityKit, and SwiftData to enable users to scan rooms into 3D models using LiDAR sensors. This project showcases software architecture principles including dependency injection, state management, event-driven design, and integration with Apple's ecosystem.
+This project is a SwiftUI-based application leveraging frameworks such as ARKit, RealityKit, and SwiftData to enable users to scan rooms into 3D models using LiDAR sensors. The primary goal is for users to scan a room with their iOS device, upload the data to a server, download the processed result, view it, and export it elsewhere.
 
-## Architectural Highlights
+The project showcases software architecture principles including dependency injection, state management, event-driven design, and integration with Apple’s ecosystem. A clean architecture is used, dividing features by clear responsibility to improve maintainability and testability.
 
-### Application Entry Point
-The application employs SwiftUI’s lifecycle management. It utilizes an `AppDelegate` adaptor to integrate UIKit functionalities such as push notification handling and deep linking into SwiftUI's lifecycle.
+## Project Goals
+
+- Room Scanning: Allow users to scan indoor spaces using LiDAR via their iOS device.
+- Data Upload: Upload scan data to a backend server for processing.
+- Result Download & Export: Download processed 3D models, view them, and export to other destinations.
+
+## Architectural Overview
+
+The architecture consists of the following layers:
+
+- Presentation
+- App State
+- Interactor
+- Repository & Services
+
+Each layer is responsible for a distinct part of the app’s logic, maximizing independence, clarity, and testability.
+
+### Layer Responsibilities
+
+- Presentation (SwiftUI View): Handles all user input and display logic. Views subscribe to state changes using reactive programming with the Combine framework. Views access dependencies via injection from the DIContainer, ensuring loose coupling.
+- App State: Centralizes global state, including authentication status, permissions, and scan lists. Views reactively respond to state changes.
+- Interactor: Contains all business logic, completely unaware of the view or repository implementation. This separation ensures that business logic can be tested and maintained in isolation.
+- Repository: Abstracts both local and remote data operations. The repository pattern means interactors interact only with protocols, not concrete implementations. This abstraction allows swapping storage implementations with zero changes to business logic.
 
 ### Dependency Injection
 
-The app leverages a Dependency Injection (DI) container pattern. `DIContainer` organizes:
-- AppState: Centralized state management using a reactive store (`Store<AppState>`).
-- Interactors: Handle business logic (authentication, scanning, permissions).
-- Repositories: Separate concerns into local (SwiftData-backed) and remote (web repositories) operations.
-- Services: Essential utilities (Keychain, DefaultsService, FileManager).
+All dependencies are assembled in `AppEnvironment.bootstrap()`, which configures the DIContainer with:
 
-### State Management
+- Global state (`AppState`)
+- Interactors (business logic handlers)
+- Repositories (local and remote)
+- Services (e.g., Keychain, file management)
 
-The `AppState` struct manages the application’s global state for authentication, permissions, and view routing.
+Dependencies are injected into the SwiftUI view hierarchy, making them accessible in the app.
 
-### Event Handling
+### Lifecycle and System Event Handling
 
-- Push Notifications: Managed through `PushNotificationsHandler`, integrating with the scanning workflow, triggering actions based on received notifications.
-- Deep Linking: `DeepLinksHandler` directs navigation.
+The app uses SwiftUI life cycle, supplemented by a UIKit `AppDelegate` adapter for system integrations like push notifications and deep linking.
 
-### SwiftData and Persistence
+- Push Notifications: Managed by `PushNotificationsHandler`, which can trigger workflow actions in response to notifications.
+- Deep Linking: Managed by `DeepLinksHandler` for in-app navigation.
 
-Using SwiftData (`ScanLocalRepository`, `UploadTaskLocalRepository`) for local data persistence ensures efficient management of scans and upload tasks, enabling offline support.
+### Permissions Management
 
-### Networking and Web APIs
+The app centrally checks and updates the status for camera and push notification permissions, surfacing them in AppState for use across the UI.
 
-The app communicates with AWS services:
-- Authentication via AWS Cognito (OAuth 2.0 flow).
-- File uploads and data retrieval leveraging presigned URLs and RESTful APIs.
-- Push notifications registration managed through a dedicated web repository.
+### 3D Scanning & Model Handling
 
-### Authentication
+- Scanning uses ARKit and RealityKit to process LiDAR data into 3D models.
+- Upload and download of scans are tracked, with persistent state maintained even across app restarts.
 
-Implements an authentication flow using AWS Cognito, supporting token exchange and KeyChain storage.
+### Data Persistence
 
-### Scanning and 3D Model Handling
+- SwiftData is used for local persistence of scan and upload tasks, supporting offline use.
+- Repositories isolate data access, so changing the persistence backend requires no change to business logic.
 
-- Captures and processes LiDAR scans using ARKit and RealityKit.
-- Handles asynchronous upload and processing statuses, ensuring error handling and recovery mechanisms.
+### Networking & Cloud Integration
 
-### User Interface
+  - Authentication is handled via AWS Cognito using OAuth 2.0, with tokens securely stored in Keychain.
+  - File uploads and downloads use presigned URLs and REST APIs.
+  - Push notification registration is managed by a dedicated web repository.
 
-Features search, sort, and responsive UI elements integrated with state management.
+## Design Rationale
 
-### Permissions
+The architecture offers several advantages:
 
-Manages user permission status checks for camera and push notifications.
+- Separation of Concerns: Each layer only knows about its own responsibility. This reduces the impact of changes and makes the code easier to read and maintain.
+- Flexibility: Switching out networking or data storage implementations does not require changes in the business logic.
+- Testability: Dependency injection allows the use of mock objects for each layer, enabling unit testing without relying on real network or database dependencies.
+- Maintainability: Clean architecture enables easier addition of new features or modifications with minimal impact on unrelated code.
 
 ## Technical Stack
 
-- SwiftUI: For reactive, declarative UI.
+- SwiftUI: Declarative user interface.
 - SwiftData: Local data persistence.
-- ARKit & RealityKit: 3D scanning and rendering.
-- Combine & Concurrency: Reactive data flows and asynchronous operations.
-- AWS: Cloud storage, authentication, and backend services.
-- Dependency Injection: Modular, maintainable, and testable architecture.
+- ARKit & RealityKit: LiDAR scanning and 3D rendering.
+- Combine & Swift Concurrency: Reactive programming and asynchronous operations.
+- AWS: Authentication, storage, and backend services.
+- Dependency Injection: Promotes modular, maintainable, and testable codebase.
 
 ## Key Features
 
-- 3D scanning using LiDAR.
+- 3D room scanning using LiDAR.
 - Secure authentication and session management.
-- Push notification-driven workflow.
-- Local data persistence.
-- Intuitive and accessible user interface.
+- Push notification-driven workflows.
+- Local data persistence and offline support.
+- Intuitive, accessible, and responsive UI.
 
 ## Testing
 
-The project includes unit tests covering local persistence, authentication, and networking logic. The project leverages the Swift Testing framework for modern, concise, and expressive test definitions.
+The project includes unit tests covering:
+
+- Local data persistence
+- Authentication
+- Networking logic
+
+Dependency injection makes it possible to test each layer in isolation with mock implementations, without reliance on actual network or database access.
