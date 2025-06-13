@@ -17,12 +17,13 @@ struct RoomScannerView: View {
     @Environment(\.injected) private var injected
     @Environment(\.dismiss) private var dismiss
     
-    @StateObject private var scanner = PointCloudScanner()
-    @State private var isExporting: Bool = false
+    @State private var scanner = PointCloudScanner()
+    
+    @State private var isExporting = false
     @State private var exportURL: URL?
     
-    @State private var isScanNamePromptPresented: Bool = false
-    @State private var scanName: String = ""
+    @State private var isScanNamePromptPresented = false
+    @State private var scanName = ""
     
     private let logger = Logger.forType(RoomScannerView.self)
     
@@ -49,7 +50,7 @@ struct RoomScannerView: View {
                 Spacer()
                 
                 VStack(spacing: 12) {
-                    if scanner.isScanning {
+                    if !isExporting {
                         Label("Scanning…", systemImage: "dot.radiowaves.left.and.right")
                             .padding(.vertical, 8)
                             .padding(.horizontal, 20)
@@ -58,11 +59,8 @@ struct RoomScannerView: View {
                     }
                     
                     HStack(spacing: 20) {
-                        // Reset
                         Button {
                             scanner.reset()
-                            exportURL = nil
-                            scanName = ""
                         } label: {
                             Label("Reset", systemImage: "arrow.counterclockwise")
                                 .padding(.vertical, 10)
@@ -72,21 +70,20 @@ struct RoomScannerView: View {
                         
                         Spacer()
                         
-                        // Finish / Export
                         Button {
                             exportAndPrepareUpload()
                         } label: {
                             Label(isExporting ? "Exporting…" : "Finish Scan",
                                   systemImage: "square.and.arrow.up")
-                                .padding(.vertical, 10)
-                                .padding(.horizontal, 20)
-                                .background(isExporting ?
-                                            Color.gray.opacity(0.4) :
+                            .padding(.vertical, 10)
+                            .padding(.horizontal, 20)
+                            .background(!scanner.isExportable || isExporting ?
+                                        Color.gray.opacity(0.4) :
                                             Color.green.opacity(0.9),
-                                            in: Capsule())
-                                .foregroundColor(.white)
+                                        in: Capsule())
+                            .foregroundColor(.white)
                         }
-                        .disabled(isExporting)
+                        .disabled(!scanner.isExportable || isExporting)
                     }
                     .padding(.horizontal, 24)
                 }
@@ -96,7 +93,7 @@ struct RoomScannerView: View {
                     LinearGradient(colors: [.clear, .black.opacity(0.4)],
                                    startPoint: .top,
                                    endPoint: .bottom)
-                        .ignoresSafeArea(edges: .bottom)
+                    .ignoresSafeArea(edges: .bottom)
                 )
             }
         }
@@ -106,10 +103,7 @@ struct RoomScannerView: View {
                 if let url = exportURL {
                     Task.detached {
                         do {
-                            let uploadTask = try await injected
-                                .interactors
-                                .scanInteractor
-                                .storeUploadTask(scanName: scanName, fileURL: url)
+                            let uploadTask = try await injected.interactors.scanInteractor.storeUploadTask(scanName: scanName, fileURL: url)
                             try await injected.interactors.scanInteractor.upload(uploadTask)
                         } catch {
                             logger.error("Upload failed: \(error.localizedDescription, privacy: .public)")
@@ -118,41 +112,43 @@ struct RoomScannerView: View {
                 }
                 dismiss()
             }
-            .disabled(scanName.isEmpty)
+            .disabled(
+                scanName
+                    .trimmingCharacters(in: .whitespacesAndNewlines)
+                    .isEmpty
+            )
         }
     }
     
-    // MARK: – Helpers
-    
     private func exportAndPrepareUpload() {
         guard !isExporting else { return }
-        
         isExporting = true
-        scanner.exportPLY { url in
-            DispatchQueue.main.async {
-                self.isExporting = false
-                guard let url else {
-                    logger.error("Export returned nil URL")
-                    return
+        
+        Task.detached {
+            do {
+                let url = try await scanner.exportPLY()
+                
+                await MainActor.run {
+                    exportURL = url
+                    isScanNamePromptPresented = true
                 }
-                self.exportURL = url
-                self.isScanNamePromptPresented = true
+            } catch {
+                logger.error("Export failed: \(error.localizedDescription, privacy: .public)")
             }
         }
     }
 }
 
 
-// MARK: – ARView Representable (LiDAR point‑cloud)
+// MARK: – ARView Representable (LiDAR point-cloud)
 
 private struct ARViewContainer: UIViewRepresentable {
     
-    @ObservedObject var scanner: PointCloudScanner
+    @State var scanner: PointCloudScanner
     
     func makeUIView(context: Context) -> ARView {
         let arView = ARView(frame: .zero)
         
-        // 1) Coaching overlay
         let coaching = ARCoachingOverlayView()
         coaching.session = arView.session
         coaching.goal = .tracking
@@ -166,7 +162,6 @@ private struct ARViewContainer: UIViewRepresentable {
             coaching.trailingAnchor.constraint(equalTo: arView.trailingAnchor)
         ])
         
-        // 2) Configure LiDAR + scene reconstruction
         guard ARWorldTrackingConfiguration.supportsSceneReconstruction(.mesh) else {
             fatalError("Device does not support mesh reconstruction.")
         }
@@ -177,7 +172,6 @@ private struct ARViewContainer: UIViewRepresentable {
         config.environmentTexturing = .automatic
         arView.session.run(config)
         
-        // 3) Delegate
         arView.session.delegate = context.coordinator
         context.coordinator.arView = arView
         
@@ -189,9 +183,11 @@ private struct ARViewContainer: UIViewRepresentable {
     func makeCoordinator() -> Coordinator { Coordinator(scanner: scanner) }
     
     final class Coordinator: NSObject, ARSessionDelegate {
+        
         let scanner: PointCloudScanner
         weak var arView: ARView?
-        private var latestFrame: ARFrame?
+        
+        private weak var latestFrame: ARFrame?
         
         init(scanner: PointCloudScanner) {
             self.scanner = scanner
@@ -202,17 +198,24 @@ private struct ARViewContainer: UIViewRepresentable {
             latestFrame = frame
         }
         
-        func session(_ session: ARSession, didAdd anchors: [ARAnchor]) { process(anchors) }
+        func session(_ session: ARSession, didAdd anchors: [ARAnchor])    { process(anchors) }
         func session(_ session: ARSession, didUpdate anchors: [ARAnchor]) { process(anchors) }
         
         private func process(_ anchors: [ARAnchor]) {
-            guard let frame = latestFrame, let arView = arView else { return }
+            guard
+                let frame = latestFrame,
+                let arView = arView
+            else { return }
+            
             for anchor in anchors.compactMap({ $0 as? ARMeshAnchor }) {
                 scanner.addMeshAnchor(anchor, frame: frame, in: arView)
             }
         }
     }
 }
+
+
+// MARK: - Preview
 
 #if DEBUG
 #Preview {
